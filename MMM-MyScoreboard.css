@@ -17,26 +17,26 @@
 }
 
 .MMM-MyScoreboard .league-separator {
-  font-size: 15.5px;
-  line-height: 18px;
+	font-size: 1.0em; /* Separator font size relative to base font (15.5/20) */
+	line-height: 1.0em; /* Line height relative to separator font size */
   text-transform: uppercase;
-  margin-top: 10px;
+  margin-top: 0.5em;
   border-bottom: solid 1px #222;
   text-align: left;
   padding: 0;
 }
 .MMM-MyScoreboard .league-separator > span {
-  color: #000;
+  color: var(--color-text-bright);
   font-weight: bold;
-  padding-left: 6px;
-  padding-right: 2px;
-  background-color: #FFF;
+	padding-left: 0.3em; /* Padding relative to font size */
+	padding-right: 0.1em;
   display: inline-block;
   vertical-align: top;
   position: relative;
   white-space: nowrap;
 }
 
+/*
 .MMM-MyScoreboard .league-separator > span:after {
   content: "";
   width: 0;
@@ -50,6 +50,7 @@
   position: relative;
   right: -2px;
 }
+  */
 
 .MMM-MyScoreboard .box-score {
   min-width: 300px;
@@ -67,10 +68,10 @@
   align-items: center;
   overflow: hidden;
 
-  width: 60px;
-  height: 60px;
+  width: 1.5em;
+  height: 1.1em;
   top: 5px;
-  
+  vertical-align: middle;
   border: none;
 
   -webkit-filter: grayscale(100%);
@@ -78,8 +79,8 @@
 }
 
 .MMM-MyScoreboard .box-score .logo img {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 1.5em;
+  max-height: 1.1em;
 }
 
 .MMM-MyScoreboard .wrapper.colored .box-score .logo {
@@ -111,7 +112,7 @@
   position: absolute;
   display: block;
   width: 44px;
-  font-size: 32px;
+/*  font-size: 32px; */
   line-height: 1;
   top: 20px;
   color: #FFF;
@@ -221,7 +222,7 @@
 .MMM-MyScoreboard .wrapper.colored .box-score .logo .ranking,
 .MMM-MyScoreboard .wrapper.colored .box-score .team-name .ranking,
 .MMM-MyScoreboard .wrapper.colored .box-score .team-short-code .ranking {
-  background-color: #C0FF00;
+  background-color: #f8d700;
 }
 
 .MMM-MyScoreboard .wrapper.colored .box-score.in-progress .status {  
@@ -267,7 +268,7 @@
 }
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-h .team-short-code.home,
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-h .team-name.home {
-  color: #7AE4FF;
+  color: #f8d700;
 }
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-h .team-short-code.visitor,
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-h .team-name.visitor {
@@ -275,7 +276,7 @@
 }
 
 .MMM-MyScoreboard .wrapper.highlight-winners.colored .box-score.winner-h .score.home {
-  color: #7AE4FF;
+  color: #f8d700;
 }
 
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-v .score.home {
@@ -283,14 +284,14 @@
 }
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-v .team-short-code.visitor,
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-v .team-name.visitor {
-  color: #7AE4FF;
+  color: #f8d700;
 }
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-v .team-short-code.home,
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-v .team-name.home {
   color: white;
 }
 .MMM-MyScoreboard .wrapper.highlight-winners.colored .box-score.final.winner-v .score.visitor {
-  color: #7AE4FF;
+  color: #f8d700;
 }
 
 .MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.tie .score.visitor,
