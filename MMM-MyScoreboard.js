@@ -34,6 +34,7 @@ Module.register('MMM-MyScoreboard', {
     debugHours: 0,
     debugMinutes: 0,
     showPlayoffStatus: false,
+    useFakeDate: null, // Set to 'YYYY-MM-DD' string to simulate that date for testing
     sports: [
       {
         league: 'NHL',
@@ -307,6 +308,16 @@ Module.register('MMM-MyScoreboard', {
   ydLoaded: {},
   noGamesToday: {},
   logoIndex: 0,
+
+  // Helper function to get current moment (real or fake for testing)
+  getCurrentMoment: function () {
+    if (this.config.useFakeDate) {
+      // Parse the fake date and apply any debug hours/minutes offsets
+      return moment(this.config.useFakeDate, 'YYYY-MM-DD').add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes')
+    }
+    // Return real current time with debug offsets
+    return moment().add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes')
+  },
 
   viewStyleHasLogos: function (v) {
     switch (v) {
@@ -823,9 +834,9 @@ Module.register('MMM-MyScoreboard', {
       this.sportsData[payload.label]['sortIdx'] = payload.sortIdx
       this.updateDom()
       if (payload.noGamesToday === true) {
-        this.noGamesToday[payload.index] = moment().add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes').format('YYYY-MM-DD')
+        this.noGamesToday[payload.index] = this.getCurrentMoment().format('YYYY-MM-DD')
       }
-      if (moment().add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes').hour() >= this.config.rolloverHours) {
+      if (this.getCurrentMoment().hour() >= this.config.rolloverHours) {
         this.sportsDataYd = {}
       }
     }
@@ -843,7 +854,7 @@ Module.register('MMM-MyScoreboard', {
           stopGrabbingYD = false
         }
       }
-      this.ydLoaded[payload.index] = { loaded: stopGrabbingYD, date: moment().add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes').format('YYYY-MM-DD') }
+      this.ydLoaded[payload.index] = { loaded: stopGrabbingYD, date: this.getCurrentMoment().format('YYYY-MM-DD') }
     }
     else if (notification === 'MMM-MYSCOREBOARD-LOCAL-LOGO-LIST' && payload.instanceId == this.identifier) {
       this.localLogos = payload.logos
@@ -954,7 +965,7 @@ Module.register('MMM-MyScoreboard', {
   },
 
   getScores: function () {
-    var gameDate = moment().add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes') // get today's date
+    var gameDate = this.getCurrentMoment() // get today's date
     var whichDay = { today: false, yesterday: 'no' }
 
     if (gameDate.hour() < this.config.rolloverHours) {
@@ -969,7 +980,7 @@ Module.register('MMM-MyScoreboard', {
       tempToday = true
     }
 
-    // just used for debug, if you want to force a specific date
+    // Legacy debug option - DEBUG_gameDate overrides useFakeDate if both are set
     if (this.config.DEBUG_gameDate) {
       gameDate = moment(this.config.DEBUG_gameDate, 'YYYYMMDD')
     }
@@ -1015,6 +1026,7 @@ Module.register('MMM-MyScoreboard', {
         localMarkets: self.config.localMarkets,
         debugHours: self.config.debugHours,
         debugMinutes: self.config.debugMinutes,
+        useFakeDate: self.config.useFakeDate,
       }
 
       self.sendSocketNotification('MMM-MYSCOREBOARD-GET-SCORES', payload)

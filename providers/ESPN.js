@@ -550,6 +550,16 @@ module.exports = {
     teams: [],
   },
 
+  // Helper function to get current moment (real or fake for testing)
+  getCurrentMoment: function (payload) {
+    if (payload.useFakeDate) {
+      // Parse the fake date and apply any debug hours/minutes offsets
+      return moment(payload.useFakeDate, 'YYYY-MM-DD').add(payload.debugHours, 'hours').add(payload.debugMinutes, 'minutes')
+    }
+    // Return real current time with debug offsets
+    return moment().add(payload.debugHours, 'hours').add(payload.debugMinutes, 'minutes')
+  },
+
   getLeaguePath: function (league) {
     return this.LEAGUE_PATHS[league]
   },
@@ -567,7 +577,7 @@ module.exports = {
     }
     url += moment(gameDate).format('YYYYMMDD') + '&limit=200'
     var MLBurl = 'https://mastapi.mobile.mlbinfra.com/api/epg/v3/search?date='
-      + moment().add(payload.debugHours, 'hours').add(payload.debugMinutes, 'minutes').format('YYYY-MM-DD') + '&exp=MLB'
+      + this.getCurrentMoment(payload).format('YYYY-MM-DD') + '&exp=MLB'
     /*
       by default, ESPN returns only the Top 25 ranked teams for NCAAF
       and NCAAM. By appending the group parameter (80 for NCAAF and 50
@@ -600,7 +610,7 @@ module.exports = {
         if (freeGameBody['results']) {
           freeGameBody['results'].forEach ((game) => {
             if (game['videoFeeds'].length > 0 && game['videoFeeds'][0]['freeGame']) {
-              this.freeGameOfTheDay['day'] = moment().add(payload.debugHours, 'hours').add(payload.debugMinutes, 'minutes').format('YYYY-MM-DD')
+              this.freeGameOfTheDay['day'] = this.getCurrentMoment(payload).format('YYYY-MM-DD')
               this.freeGameOfTheDay['teams'].push(game['gameData']['away']['teamAbbrv'])
               this.freeGameOfTheDay['teams'].push(game['gameData']['home']['teamAbbrv'])
               if (this.freeGameOfTheDay['teams'].includes('AZ')) {

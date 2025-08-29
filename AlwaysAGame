@@ -1,0 +1,52 @@
+so the goal is to optimize showing _some_ information always and be efficient about API usage.
+
+
+1. like MMM-MyStandings, we will add date ranges that determine if the league is queried and shows up at all
+proposed config:
+                                        {
+                                        league: "MLB",
+                                        from: "03-01",    // new optional MM-DD
+                                        to: "11-15",      // new optional MM-DD
+                                        teams: ["SEA","TOR","CHI","BOS"]
+                                        },
+keep in mind that "to" can be before in the year than "from", which means it wraps around through new year's.   
+If the current date is outside this range, no API call is made for that league, no UX appears, and it's as if that config wasn't there.  these values would default to 01-01 to 12-31 --- just like today including all dates.
+
+
+
+
+2. we will replace the current config settings of 'rolloverHours' and 'alwaysShowToday'.  Instead we'll add a 'minimumNumberOfGames' parameter for each league.
+                                        {
+                                        league: "MLB",
+                                        minimumNumberOfGames: 1,  // new optional
+                                        teams: ["SEA","TOR","CHI","BOS"]
+                                        },
+
+the idea is that games in the future and past should be found in order to reach the minimum (up to a point).   It appears the UX is already equipped to show both past and future games (maybe some tweaking later) but for now this seems mostly about how the backend queries.
+
+the general algorithm is:
+{
+    - fetch games for today and filter based on user config teams
+    - do we have > minimumNumberOfGames?  if so, stop
+    - N=1
+    - repeat until N reaches a maximum (code constant, start with N=20)
+        - fetch games for the day N days ago and filter  (or use cache)
+        - do we have > minimumNumberOfGames?  if so, stop
+        - fetch games for the day N days in the future   (or use cache)
+        - do we have > minimumNumberOfGames?  if so, stop
+        - N=N+1
+    - if _still_ < minimum, then do 'additional processing'.  more on this below.
+}
+
+minimumNumberOfGames defaults to 0, which gives the current behavior -- only today is queried.
+
+a note about the cache:  it should be possible to cache and keep past & future games _for the entire current day_.  ie the cache can be used if current day == cache day
+
+additional processing:  in most cases, this should find enough games to show.  around playoffs, this might not be true.   in that case, take the entire  list of games found above that were NOT chosen (build up this list while querying so should not need to touch the API or cache again), sorted by 'distance from today' and choose the top games so that the minimum is reached.
+ie:   2 games today
+      1 games yesterday
+      2 games tomorrow
+      2 games 2 days ago
+      etc
+
+if we still need 4 games to reach the minimum, then add today's, yesterday's and 1 from tomorrow.    remember don't add again games already chosen as part of the users configured list.   
