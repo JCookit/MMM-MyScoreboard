@@ -1027,6 +1027,8 @@ Module.register('MMM-MyScoreboard', {
         debugHours: self.config.debugHours,
         debugMinutes: self.config.debugMinutes,
         useFakeDate: self.config.useFakeDate,
+        from: sport.from, // Season start date (MM-DD)
+        to: sport.to,     // Season end date (MM-DD)
       }
 
       self.sendSocketNotification('MMM-MYSCOREBOARD-GET-SCORES', payload)
