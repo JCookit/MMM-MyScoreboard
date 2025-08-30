@@ -2,7 +2,7 @@
 
 .MMM-MyScoreboard {
   min-width: 325px;
-  max-width: 400px;
+  /* max-width: 400px; */
 }
 
 .MMM-MyScoreboard .wrapper {
@@ -23,6 +23,11 @@
   padding: 0;
 }
 
+/* Add extra vertical spacing between different sports (but not between days within same sport) */
+.MMM-MyScoreboard .league-separator.first-sport-header:not(:first-child) {
+  margin-top: calc(1.0em + 12px); /* Original 0.5em + half font height spacing */
+}
+
 .MMM-MyScoreboard .league-separator > span {
   color: var(--color-text-bright);
   font-weight: bold;
@@ -32,6 +37,15 @@
   vertical-align: top;
   position: relative;
   white-space: nowrap;
+}
+
+/* League name and date styling */
+.MMM-MyScoreboard .league-separator .league-name {
+  color: var(--color-text-bright); /* Default color, can be overridden by dynamic CSS */
+}
+
+.MMM-MyScoreboard .league-separator .league-date {
+  color: var(--color-text-bright); /* Date portion keeps default color */
 }
 
 /* Multi-day game styling */
@@ -56,20 +70,58 @@
   font-style: italic; /* Italics for all future games */
 }
 
+/* Fix italic text clipping in game status area */
+.MMM-MyScoreboard .multi-day-game .status {
+  padding-right: 0.2em; /* Add right padding to prevent italic clipping */
+}
+
 /* Very distant games are most dimmed */
 .MMM-MyScoreboard .multi-day-game[class*="past-"]:not(.past-1):not(.past-2):not(.past-3),
 .MMM-MyScoreboard .multi-day-game[class*="future-"]:not(.future-1):not(.future-2):not(.future-3) {
   opacity: 0.65;
 }
 
+/* ============== LEAGUE SEPARATOR DAY STYLING ============== */
+/* Match the game styling for headings */
+
+.MMM-MyScoreboard .league-separator.multi-day-header.past-1,
+.MMM-MyScoreboard .league-separator.multi-day-header.past-2,
+.MMM-MyScoreboard .league-separator.multi-day-header.past-3 {
+  opacity: 0.75; /* Past headings more dimmed */
+}
+
+.MMM-MyScoreboard .league-separator.multi-day-header.future-1,
+.MMM-MyScoreboard .league-separator.multi-day-header.future-2,
+.MMM-MyScoreboard .league-separator.multi-day-header.future-3 {
+  opacity: 0.8; /* Future headings slightly dimmed */
+}
+
+/* All future headings should be italicized */
+.MMM-MyScoreboard .league-separator.multi-day-header[class*="future-"] {
+  font-style: italic; /* Italics for all future headings */
+}
+
+/* Fix italic text clipping - add extra right padding for italicized headings */
+.MMM-MyScoreboard .league-separator.multi-day-header[class*="future-"] > span {
+  padding-right: 0.3em; /* More right padding to prevent italic clipping */
+}
+
+/* Very distant headings are most dimmed */
+.MMM-MyScoreboard .league-separator.multi-day-header[class*="past-"]:not(.past-1):not(.past-2):not(.past-3),
+.MMM-MyScoreboard .league-separator.multi-day-header[class*="future-"]:not(.future-1):not(.future-2):not(.future-3) {
+  opacity: 0.65;
+}
+
 /* ============== STACKED WITH LOGOS STYLES ============== */
 
-.MMM-MyScoreboard .box-score {
+.MMM-MyScoreboard .box-score.stackedWithLogos {
   min-width: 300px;
   height: 66px; /* stackedWithLogos height */
   position: relative;
   text-align: left;
   border-bottom: solid 1px #222;
+  padding-left: 10%;
+  padding-right: 10%;
 }
 
 .MMM-MyScoreboard .box-score.playoff {
@@ -85,7 +137,7 @@
   overflow: hidden;
   height: 24px;
   width: 24px;
-  left: 0px;
+  left: 10%; /* Account for box-score padding */
   right: auto;
   vertical-align: middle;
   border: none;
@@ -132,7 +184,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
-  left: 30px;
+  left: calc(10% + 30px); /* 10% padding + original 30px offset */
   width: 130px;
   color: white;
 }
@@ -169,14 +221,14 @@
   white-space: nowrap;
   overflow: hidden;
   text-align: left;
-  left: 140px;
+  left: calc(10% + 140px); /* 10% padding + original 140px offset */
   width: 44px;
   color: #FFF;
   font-weight: bold;
 }
 
 .MMM-MyScoreboard .box-score.home-team-first .score {  
-  left: 146px;
+  left: calc(10% + 146px); /* 10% padding + original 146px offset */
 }
 
 .MMM-MyScoreboard .box-score .score.visitor {
@@ -199,9 +251,9 @@
 .MMM-MyScoreboard .box-score .status {
   position: absolute;
   height: 66px;
-  width: calc(100% - 200px);
+  width: calc(100% - 200px - 20%);
   left: initial;
-  right: 0px;
+  right: 10%; /* Account for box-score padding */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -460,7 +512,7 @@
 
 .MMM-MyScoreboard .box-score.stackedWithLogos .score,
 .MMM-MyScoreboard .box-score.stackedWithLogos.home-team-first .score {  
-  left: 146px;
+  left: calc(10% + 146px); /* 10% padding + original 146px offset */
 }
 .MMM-MyScoreboard .box-score.stackedWithLogos .score.visitor {
   top: 8px;
@@ -476,7 +528,8 @@
 }
 .MMM-MyScoreboard .box-score.stackedWithLogos .status {
   height: 66px;
-  width: calc(100% - 200px);
+  width: calc(100% - 200px - 20%); /* Account for 20% total padding (10% left + 10% right) */
+  right: 10%; /* Account for box-score padding */
 }
 
 

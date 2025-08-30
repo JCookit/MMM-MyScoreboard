@@ -230,12 +230,16 @@ module.exports = NodeHelper.create({
       // Include today's games (they should be in cache from fetchSingleDay above)
       const todayCacheKey = this.getCacheKey(league, baseDate)
       if (this.gamesCache[todayCacheKey]) {
-        const todayGames = this.gamesCache[todayCacheKey].map(game => ({
-          ...game,
-          distanceFromToday: 0,
-          dateKey: baseDate.format('YYYY-MM-DD')
-        }))
-        allAvailableGames.push(...todayGames)
+        this.gamesCache[todayCacheKey].forEach(game => {
+          if (!this.isUserTeamGame(game, payload.teams)) { // Don't re-add user games
+            const todayGameWithDistance = {
+              ...game,
+              distanceFromToday: 0,
+              dateKey: baseDate.format('YYYY-MM-DD')
+            }
+            allAvailableGames.push(todayGameWithDistance)
+          }
+        })
       }
 
       // Add cached games from other days
@@ -247,25 +251,23 @@ module.exports = NodeHelper.create({
 
           Log.debug(`adding ${cacheKey}`);
           
-          if (distance > 0) { // Don't re-add today
-            const gamesWithDistance = this.gamesCache[cacheKey].map(game => ({
-              ...game,
-              distanceFromToday: distance,
-              dateKey: dateStr
-            }))
-            allAvailableGames.push(...gamesWithDistance)
+          if (distance > 0) {
+            this.gamesCache[cacheKey].forEach(game => {
+              if (!this.isUserTeamGame(game, payload.teams)) { 
+                const gameWithDistance = {
+                  ...game,
+                  distanceFromToday: distance,
+                  dateKey: dateStr
+                }
+                allAvailableGames.push(gameWithDistance)
+              }
+            })
           }
         }
-      })
-      
-      // Filter out games from user teams (we already have those)
-      // Use the extracted predicate for consistency
-      const nonUserGames = allAvailableGames.filter(game => {
-        return !this.isUserTeamGame(game, payload.teams)
-      })
+      });
       
       // Sort by distance from today, then by game importance (you could add more criteria)
-      nonUserGames.sort((a, b) => {
+      allAvailableGames.sort((a, b) => {
         if (a.distanceFromToday !== b.distanceFromToday) {
           return a.distanceFromToday - b.distanceFromToday
         }
@@ -275,9 +277,9 @@ module.exports = NodeHelper.create({
       
       // Take the games we need
       const gamesNeeded = minimumGames - totalUserGames
-      const fallbackGames = nonUserGames.slice(0, gamesNeeded)
+      const fallbackGames = allAvailableGames.slice(0, gamesNeeded)
       
-      Log.debug(`[MMM-MyScoreboard] 📊 Fallback analysis: ${allAvailableGames.length} total cached games, ${nonUserGames.length} non-user games, taking ${fallbackGames.length}`)
+      Log.debug(`[MMM-MyScoreboard] 📊 Fallback analysis: ${allAvailableGames.length} total cached non-user games, taking ${fallbackGames.length}`)
       
       // Add these games to the appropriate day buckets
       fallbackGames.forEach(game => {

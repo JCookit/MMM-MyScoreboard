@@ -435,7 +435,7 @@ Module.register('MMM-MyScoreboard', {
    <span class='score visitor'>vScore</span>
    </div>
    ******************************************************************/
-  boxScoreFactory: function (league, gameObj, label) {
+  boxScoreFactory: function (league, gameObj, leagueKey) {
     // Simplified for stackedWithLogos only
     var boxScore = document.createElement('div')
     boxScore.classList.add('box-score', league.replaceAll(' ', ''))
@@ -458,8 +458,8 @@ Module.register('MMM-MyScoreboard', {
     if (league.startsWith('NCAA')) {
       leagueForLogoPath = 'NCAA'
     }
-    else if (this.supportedLeagues[label]) {
-      leagueForLogoPath = label
+    else if (this.supportedLeagues[leagueKey]) {
+      leagueForLogoPath = leagueKey
     }
 
     // stackedWithLogos always has logos - add home team logo
@@ -690,12 +690,19 @@ Module.register('MMM-MyScoreboard', {
     sortedSports.forEach(sportKey => {
       const sportGroup = sportGroups[sportKey]
       
+      // Find the sport config to get the display label
+      const sportConfig = this.config.sports.find(sport => sport.league === sportKey)
+      const displayLabel = (sportConfig && sportConfig.label) ? sportConfig.label : sportKey
+      
       // Sort days within this sport by offset
       const sortedDayKeys = Object.keys(sportGroup.days).sort((a, b) => {
         return sportGroup.days[a].dayOffset - sportGroup.days[b].dayOffset
       })
       
-      Log.debug(`[MMM-MyScoreboard] 🎯 Rendering sport ${sportKey} with days: [${sortedDayKeys.join(', ')}]`)
+      Log.debug(`[MMM-MyScoreboard] 🎯 Rendering sport ${sportKey} (${displayLabel}) with days: [${sortedDayKeys.join(', ')}]`)
+      
+      // Track if this is the first separator for this sport
+      let isFirstSeparatorForSport = true
       
       // Render each day within this sport
       sortedDayKeys.forEach(dayKey => {
@@ -707,12 +714,33 @@ Module.register('MMM-MyScoreboard', {
           const leagueSeparator = document.createElement('div')
           leagueSeparator.classList.add('league-separator')
           
-          let separatorText = sportKey
-          if (dayData.label) {
-            separatorText += ` - ${dayData.label}`
+          // Add league-specific class for potential color styling (use key, not label)
+          leagueSeparator.classList.add(sportKey.replace(/\s+/g, ''))
+          
+          // Add first-sport-header class to first separator of each sport
+          if (isFirstSeparatorForSport) {
+            leagueSeparator.classList.add('first-sport-header')
+            isFirstSeparatorForSport = false
           }
           
-          leagueSeparator.innerHTML = '<span>' + separatorText + '</span>'
+          // Add day-specific CSS classes to headings (same as games)
+          if (dayData.dayOffset !== 0) {
+            leagueSeparator.classList.add('multi-day-header')
+            if (dayData.dayOffset < 0) {
+              leagueSeparator.classList.add(`past-${Math.abs(dayData.dayOffset)}`)
+            } else {
+              leagueSeparator.classList.add(`future-${dayData.dayOffset}`)
+            }
+          }
+          
+          // Create HTML structure with separate spans for league name and date
+          let leagueNameSpan = `<span class="league-name">${displayLabel}</span>`
+          let separatorContent = leagueNameSpan
+          if (dayData.label) {
+            separatorContent += `<span class="league-date"> - ${dayData.label}</span>`
+          }
+          
+          leagueSeparator.innerHTML = '<span>' + separatorContent + '</span>'
           wrapper.appendChild(leagueSeparator)
           
           // Add games for this sport on this day
@@ -785,9 +813,10 @@ Module.register('MMM-MyScoreboard', {
         return
       }
       
-      if (!this.sportsDataMultiDay[payload.label]) {
-        this.sportsDataMultiDay[payload.label] = {}
-        Log.debug(`[MMM-MyScoreboard] 🆕 Created new entry for ${payload.label}`)
+      // Use league KEY for data storage, not label
+      if (!this.sportsDataMultiDay[payload.league]) {
+        this.sportsDataMultiDay[payload.league] = {}
+        Log.debug(`[MMM-MyScoreboard] 🆕 Created new entry for ${payload.league}`)
       }
       
       // Process each date in the payload
@@ -798,7 +827,7 @@ Module.register('MMM-MyScoreboard', {
         Log.debug(`[MMM-MyScoreboard]    - sortIdx: ${dateData.sortIdx}`)
         
         // Store in the multi-day structure
-        this.sportsDataMultiDay[payload.label][dateKey] = {
+        this.sportsDataMultiDay[payload.league][dateKey] = {
           scores: dateData.scores,
           league: payload.league,
           sortIdx: dateData.sortIdx
@@ -807,7 +836,7 @@ Module.register('MMM-MyScoreboard', {
         Log.debug(`[MMM-MyScoreboard] 📅 Stored data for ${dateKey}`)
       })
       
-      Log.debug(`[MMM-MyScoreboard] 📊 Updated sportsDataMultiDay for ${payload.label}:`, Object.keys(this.sportsDataMultiDay[payload.label]))
+      Log.debug(`[MMM-MyScoreboard] 📊 Updated sportsDataMultiDay for ${payload.league}:`, Object.keys(this.sportsDataMultiDay[payload.league]))
       
       Log.debug(`[MMM-MyScoreboard] 🔄 Calling updateDom()...`)
       this.updateDom()
@@ -894,6 +923,35 @@ Module.register('MMM-MyScoreboard', {
     setInterval(function () {
       self.rotateChannels()
     }, this.config.channelRotateInterval)
+    
+    // Inject CSS for league colors
+    this.injectLeagueColorCSS()
+  },
+
+  injectLeagueColorCSS: function () {
+    // Create CSS rules for league colors based on config
+    const cssRules = []
+    
+    this.config.sports.forEach(sport => {
+      if (sport.color) {
+        const leagueClass = sport.league.replace(/\s+/g, '')
+        cssRules.push(`.MMM-MyScoreboard .league-separator.${leagueClass} .league-name { color: ${sport.color} !important; }`)
+      }
+    })
+    
+    if (cssRules.length > 0) {
+      // Create and inject style element
+      const styleId = `${this.name}-league-colors`
+      let styleElement = document.getElementById(styleId)
+      
+      if (!styleElement) {
+        styleElement = document.createElement('style')
+        styleElement.id = styleId
+        document.head.appendChild(styleElement)
+      }
+      
+      styleElement.textContent = cssRules.join('\n')
+    }
   },
 
   makeTeamList: function (inst, league, teams, groups) {
