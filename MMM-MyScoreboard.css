@@ -5,8 +5,137 @@
   /* max-width: 400px; */
 }
 
+/* Box-score container - flexible height based on content */
+.MMM-MyScoreboard .box-score {
+  min-width: 300px;
+  position: relative;
+  text-align: left;
+  border-bottom: solid 1px #222;
+  padding: 0px 10% 0px 10%; /* Reduced top padding, extra bottom for playoff status */
+  display: flex;
+  flex-direction: column;
+  /*gap: 4px;*/ /* Reduced from 8px */
+}
+
+.MMM-MyScoreboard .box-score.playoff {
+  padding-bottom: 12px; /* Extra space for playoff status */
+}
+
+/* Game table - flexible layout for logos, teams, and scores */
+.MMM-MyScoreboard .game-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+.MMM-MyScoreboard .game-table tr {
+  height: auto;
+}
+
+.MMM-MyScoreboard .game-table td {
+  padding: 1px 0; /* Reduced from 4px */
+  vertical-align: top;
+  border: none;
+}
+
+/* Logo cell */
+.MMM-MyScoreboard .logo-cell {
+  width: 32px;
+  text-align: center;
+  padding-right: 8px;
+  position: relative; /* For absolute positioned ranking badges */
+}
+
+.MMM-MyScoreboard .logo-cell .logo {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  -webkit-filter: grayscale(100%);
+  filter: grayscale(100%);
+}
+
+.MMM-MyScoreboard.colored .logo-cell .logo {
+  -webkit-filter: none;
+  filter: none;
+}
+
+/* Team name cell */
+.MMM-MyScoreboard .team-name-cell {
+  width: 140px; /* Fixed width to align all scores consistently */
+  padding-right: 1px; /* Much closer - about a third of previous distance */
+}
+
+.MMM-MyScoreboard .team-name {
+  display: block;
+  font-size: 1.0em; /* Reduced from 20px */
+  line-height: 1.0em; /* Reduced from 24px */
+  color: white;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.MMM-MyScoreboard .box-score.in-progress .team-name {
+  color: #EFEFEF;
+}
+
+/* Score cell */
+.MMM-MyScoreboard .score-cell {
+  width: auto; /* Let it size to content */
+  text-align: left; /* Align left to sit next to team name */
+  padding-left: 8px; /* Small gap between team name and score */
+}
+
+.MMM-MyScoreboard .score {
+  display: block;
+  font-size: 1.0em; /* Reduced from 20px */
+  line-height: 0.9em; /* Reduced from 24px */
+  color: #FFF;
+  font-weight: bold;
+  text-align: left; /* Left align the score text */
+}
+
+/* Status cell - right-aligned column for game status and broadcast info */
+.MMM-MyScoreboard .status-cell {
+  width: 100px;
+  text-align: right;
+  padding-left: 15px;
+  vertical-align: middle;
+}
+
+.MMM-MyScoreboard .status-cell .status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px; /* Reduced from 2px */
+  font-size: 1.0em; /* Reduced from 16px */
+  line-height: 1.0em; /* Tighter line height */
+}
+
+.MMM-MyScoreboard .status-cell .statusPart {
+  white-space: nowrap;
+  color: #CCC;
+}
+
+.MMM-MyScoreboard .status-cell .broadcast {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0px; /* No gap between broadcast items */
+  margin-top: 2px; /* Reduced from 4px */
+}
+
+.MMM-MyScoreboard .status-cell .broadcastIconDiv {
+  font-size: 12px; /* Reduced from 14px */
+  color: #999;
+}
+
+/* Status area - positioned below the table */
+
 .MMM-MyScoreboard .wrapper {
-  margin-top: 10px;
+  margin-top: 2px; /* Further reduced for tighter spacing */
 }
 
 .MMM-MyScoreboard .module-header {
@@ -14,18 +143,23 @@
 }
 
 .MMM-MyScoreboard .league-separator {
-	font-size: 1.0em; /* Separator font size relative to base font (15.5/20) */
-	line-height: 1.0em; /* Line height relative to separator font size */
+	font-size: 0.9em; /* Slightly smaller font */
+	line-height: 1.2em; /* Even tighter line height */
   text-transform: uppercase;
-  margin-top: 0.5em;
-  border-bottom: solid 1px #222;
+  margin-top: 0.0em; /* Reduced margins */
+  margin-bottom: 0.3em;
+  border-bottom: solid 1px #cbcbcb;
   text-align: left;
-  padding: 0;
+  padding: 0em;
+}
+
+.MMM-MyScoreboard .league-separator:not(:first-child) {
+  margin-top: 0.5em; /* Reduced margins */
 }
 
 /* Add extra vertical spacing between different sports (but not between days within same sport) */
 .MMM-MyScoreboard .league-separator.first-sport-header:not(:first-child) {
-  margin-top: calc(1.0em + 12px); /* Original 0.5em + half font height spacing */
+  margin-top: calc(0.5em + 12px); /* Original 0.5em + half font height spacing */
 }
 
 .MMM-MyScoreboard .league-separator > span {
@@ -116,38 +250,27 @@
 
 .MMM-MyScoreboard .box-score.stackedWithLogos {
   min-width: 300px;
-  height: 66px; /* stackedWithLogos height */
+  /* Remove fixed height - let content determine height */
   position: relative;
   text-align: left;
   border-bottom: solid 1px #222;
   padding-left: 10%;
-  padding-right: 10%;
+  padding-right: 20%;
 }
 
-.MMM-MyScoreboard .box-score.playoff {
-  height: 82px;
-}
-
-/* Logo styles */
+/* Logo styles - table layout */
 .MMM-MyScoreboard .box-score .logo {
-  position: absolute;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  height: 24px;
-  width: 24px;
-  left: 10%; /* Account for box-score padding */
-  right: auto;
-  vertical-align: middle;
-  border: none;
+  display: block;
+  width: 1.5em;
+  height: 1.1em;
+  object-fit: contain;
   -webkit-filter: grayscale(100%);
   filter: grayscale(100%);
 }
 
 .MMM-MyScoreboard .box-score .logo img {
-  max-width: 24px;
-  max-height: 24px;
+  max-width: 1.5em;
+  max-height: 1.1em;
 }
 
 .MMM-MyScoreboard .wrapper.colored .box-score .logo {
@@ -155,37 +278,17 @@
   filter: none;
 }
 
-.MMM-MyScoreboard .box-score .logo.visitor {
-  top: 8px;
-}
-
-.MMM-MyScoreboard .box-score .logo.home {
-  top: 36px;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .logo.visitor {
-  top: 36px;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .logo.home {
-  top: 8px;
-}
-
-/* Team names */
+/* Team names - table layout */
 .MMM-MyScoreboard .box-score .team-name {
   display: block;
-  position: absolute;
   font-size: 20px;
   line-height: 24px;
-  height: 30px;
   margin: 0;
   padding: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-align: left;
-  left: calc(10% + 30px); /* 10% padding + original 30px offset */
-  width: 130px;
   color: white;
 }
 
@@ -193,71 +296,15 @@
   color: #EFEFEF;
 }
 
-.MMM-MyScoreboard .box-score .team-name.visitor {
-  top: 8px;
-}
+/* Scores - removed legacy absolute positioning, now handled by table layout */
 
-.MMM-MyScoreboard .box-score .team-name.home {
-  top: 34px;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .team-name.visitor {
-  top: 34px;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .team-name.home {
-  top: 8px;
-}
-
-/* Scores */
-.MMM-MyScoreboard .box-score .score {
-  display: block;
-  position: absolute;
-  font-size: 20px;
-  line-height: 24px;
-  height: 30px;
-  margin: 0;
-  padding: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-align: left;
-  left: calc(10% + 140px); /* 10% padding + original 140px offset */
-  width: 44px;
-  color: #FFF;
-  font-weight: bold;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .score {  
-  left: calc(10% + 146px); /* 10% padding + original 146px offset */
-}
-
-.MMM-MyScoreboard .box-score .score.visitor {
-  top: 8px;
-}
-
-.MMM-MyScoreboard .box-score .score.home {
-  top: 34px;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .score.visitor {
-  top: 34px;
-}
-
-.MMM-MyScoreboard .box-score.home-team-first .score.home {
-  top: 8px;
-}
-
-/* Status area */
+/* Status area for flexible table layout */
 .MMM-MyScoreboard .box-score .status {
-  position: absolute;
-  height: 66px;
-  width: calc(100% - 200px - 20%);
-  left: initial;
-  right: 10%; /* Account for box-score padding */
+  margin-top: 4px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-content: center;
+  justify-content: flex-start;
+  align-content: flex-start;
   align-items: flex-end;
   line-height: 1;
   font-weight: 300;
@@ -286,7 +333,18 @@
   color: #f8d700;
 }
 
-/* Ranking badges */
+/* In-progress status coloring for table layout */
+.MMM-MyScoreboard .box-score.in-progress .status-cell .statusPart {
+  color: #FFF;
+  font-weight: 400;
+}
+
+/* In-progress games should show yellow status in colored mode - table layout */
+.MMM-MyScoreboard .wrapper.colored .box-score.in-progress .status-cell .statusPart {
+  color: #f8d700;
+}
+
+/* Ranking badges - table layout */
 .MMM-MyScoreboard .box-score .logo .ranking {
   position: absolute;
   top: 0;
@@ -329,11 +387,29 @@
   color: #f8d700;
 }
 
+/* Winner team name highlighting */
+.MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-h .team-name.home {
+  color: #f8d700;
+}
+
+.MMM-MyScoreboard .wrapper.highlight-winners .box-score.final.winner-v .team-name.visitor {
+  color: #f8d700;
+}
+
 .MMM-MyScoreboard .wrapper.highlight-winners.colored .box-score.final.winner-h .score.home {
   color: #f8d700;
 }
 
 .MMM-MyScoreboard .wrapper.highlight-winners.colored .box-score.final.winner-v .score.visitor {
+  color: #f8d700;
+}
+
+/* Winner team name highlighting - colored mode */
+.MMM-MyScoreboard .wrapper.highlight-winners.colored .box-score.final.winner-h .team-name.home {
+  color: #f8d700;
+}
+
+.MMM-MyScoreboard .wrapper.highlight-winners.colored .box-score.final.winner-v .team-name.visitor {
   color: #f8d700;
 }
 
@@ -412,7 +488,7 @@
   color: white;
   width: fit-content;
   display: flex;
-  justify-content: right;
+  justify-content: flex-end;
   padding: 3px 3px 3px 3px;
   clear: both;
   white-space: nowrap;
@@ -460,17 +536,18 @@
   text-align: right;
 }
 
-/* Playoff status */
+/* Playoff status for flexible layout */
 .MMM-MyScoreboard .playoffStatus {
   display: block;
-  position: absolute;
-  top: 62px;
-  margin: 0;
+  margin: 2px 0 2px 0; /* Reduced margins but ensure space */
   padding: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  font-size: 13px !important; /* Slightly smaller font, override xsmall */
+  line-height: 1.2;
+  opacity: 0.8 !important; /* Override dimmed class for better visibility */
 }
 
 /* Fade animation for broadcast cycling */
@@ -510,28 +587,7 @@
 
 
 
-.MMM-MyScoreboard .box-score.stackedWithLogos .score,
-.MMM-MyScoreboard .box-score.stackedWithLogos.home-team-first .score {  
-  left: calc(10% + 146px); /* 10% padding + original 146px offset */
-}
-.MMM-MyScoreboard .box-score.stackedWithLogos .score.visitor {
-  top: 8px;
-}
-.MMM-MyScoreboard .box-score.stackedWithLogos .score.home {
-  top: 34px;
-}
-.MMM-MyScoreboard .box-score.stackedWithLogos.home-team-first .score.visitor {
-  top: 34px;
-}
-.MMM-MyScoreboard .box-score.stackedWithLogos.home-team-first .score.home {
-  top: 8px;
-}
-.MMM-MyScoreboard .box-score.stackedWithLogos .status {
-  height: 66px;
-  width: calc(100% - 200px - 20%); /* Account for 20% total padding (10% left + 10% right) */
-  right: 10%; /* Account for box-score padding */
-}
-
+/* Legacy stackedWithLogos absolute positioning rules removed - now using table layout */
 
 /* -- Alternate display for when logo image is broken -- */
 
@@ -712,10 +768,6 @@
 }
 
 .MMM-MyScoreboard .box-score.oneLine .status,
-.MMM-MyScoreboard .box-score.oneLineWithLogos .status {
-  display: flex;
-  justify-content: right;
-}
 
 .MMM-MyScoreboard .status {
   overflow: hidden
@@ -857,31 +909,15 @@
 }
 
 .MMM-MyScoreboard .playoffStatus {
-  display: none;
+  display: block;
 }
 
 .MMM-MyScoreboard .stackedWithLogos .playoffStatus {
   display: block;
-  position: absolute;
-  top: 62px;
-  margin: 0;
-  padding: 0;
-  white-space:nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 .MMM-MyScoreboard .stacked .playoffStatus {
   display: block;
-  position: absolute;
-  top: 56px;
-  margin: 0;
-  padding: 0;
-  white-space:nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
 }
 
 /* .MMM-MyScoreboard .largeLogos .playoffStatus {

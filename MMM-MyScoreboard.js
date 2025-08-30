@@ -436,7 +436,7 @@ Module.register('MMM-MyScoreboard', {
    </div>
    ******************************************************************/
   boxScoreFactory: function (league, gameObj, leagueKey) {
-    // Simplified for stackedWithLogos only
+    // Simplified for stackedWithLogos only with table-based layout
     var boxScore = document.createElement('div')
     boxScore.classList.add('box-score', league.replaceAll(' ', ''))
     boxScore.classList.add('stackedWithLogos')
@@ -462,125 +462,110 @@ Module.register('MMM-MyScoreboard', {
       leagueForLogoPath = leagueKey
     }
 
-    // stackedWithLogos always has logos - add home team logo
-    var hTeamLogo = document.createElement('span')
-    hTeamLogo.classList.add('logo', 'home')
-
-    var hTeamLogoImg = document.createElement('img')
-
-    if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.hTeam + '.svg') !== -1) {
-      hTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.hTeam + '.svg')
-    }
-    else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.hTeam + '.png') !== -1) {
-      hTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.hTeam + '.png')
-    }
-    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + '.svg') !== -1) {
-      hTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.hTeam + '.svg')
-    }
-    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + '.png') !== -1) {
-      hTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.hTeam + '.png')
-    }
-    else {
-      hTeamLogoImg.src = gameObj.hTeamLogoUrl
-    }
-
-    hTeamLogoImg.setAttribute('data-abbr', gameObj.hTeam)
-    hTeamLogo.appendChild(hTeamLogoImg)
-    boxScore.appendChild(hTeamLogo)
-
-    // add visitor team logo  
-    var vTeamLogo = document.createElement('span')
-    vTeamLogo.classList.add('logo', 'visitor')
-
-    var vTeamLogoImg = document.createElement('img')
-
-    if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.vTeam + '.svg') !== -1) {
-      vTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.vTeam + '.svg')
-    }
-    else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.vTeam + '.png') !== -1) {
-      vTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.vTeam + '.png')
-    }
-    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + '.svg') !== -1) {
-      vTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.vTeam + '.svg')
-    }
-    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + '.png') !== -1) {
-      vTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.vTeam + '.png')
-    }
-    else {
-      vTeamLogoImg.src = gameObj.vTeamLogoUrl
-    }
-
-    vTeamLogoImg.setAttribute('data-abbr', gameObj.vTeam)
-    vTeamLogo.appendChild(vTeamLogoImg)
-    boxScore.appendChild(vTeamLogo)
-
-    // stackedWithLogos always has long team names
-    var hTeamName = document.createElement('span')
-    hTeamName.classList.add('team-name', 'home')
-    hTeamName.innerHTML = (this.config.showRankings && gameObj.hTeamRanking ? '<span class="ranking">' + gameObj.hTeamRanking + '</span>' : '') + gameObj.hTeamLong
-    boxScore.appendChild(hTeamName)
-
-    var vTeamName = document.createElement('span')
-    vTeamName.classList.add('team-name', 'visitor')
-    vTeamName.innerHTML = (this.config.showRankings && gameObj.vTeamRanking ? '<span class="ranking">' + gameObj.vTeamRanking + '</span>' : '') + gameObj.vTeamLong
-    boxScore.appendChild(vTeamName)
-
-    // add game status
-    var status = document.createElement('div')
-    status.classList.add('status')
-    gameObj.status.forEach(function (s) {
-      var statusPart = document.createElement('div')
-      statusPart.innerHTML = s
-      statusPart.classList.add('statusPart')
-      status.appendChild(statusPart)
-    })
-    /*     if (['smallLogos', 'oneLine', 'oneLineWithLogos'].includes(this.config.viewStyle)) {
-      var maxBroadcasts = Math.min(1, gameObj.broadcast.length, this.config.limitBroadcasts)
-    }
-    else if (['largeLogos', 'stacked', 'stackedWithLogos'].includes(this.config.viewStyle)) {
-      maxBroadcasts = Math.min(2, gameObj.broadcast.length, this.config.limitBroadcasts)
-    }
-    else {
-      maxBroadcasts = Math.min(gameObj.broadcast.length, this.config.limitBroadcasts)
-     } */
-    // maxBroadcasts = gameObj.broadcast.length
-    var broadcastPart = document.createElement('div')
-    broadcastPart.classList.add('broadcast')
-    /*     if (gameObj.broadcast.length === 1) {
-      broadcastPart.innerHTML += gameObj.broadcast[0]
-    } */
-    /*     else if (maxBroadcasts === 1) {
-      broadcastPart.innerHTML += gameObj.broadcast[Math.floor(Math.random() * gameObj.broadcast.length)]
-    } */
-    // else {
-    if (gameObj.broadcast != null) {
-      for (var i = 0; i < gameObj.broadcast.length; i++) {
-        // broadcastPart.innerHTML += gameObj.broadcast[i]
-        var broadcastPartDiv = document.createElement('div')
-        broadcastPartDiv.classList.add('broadcastIconDiv')
-        broadcastPartDiv.innerHTML += gameObj.broadcast[i]
-        broadcastPart.appendChild(broadcastPartDiv)
+    // Create table structure for logos, teams, and scores
+    var gameTable = document.createElement('table')
+    gameTable.classList.add('game-table')
+    
+    // Determine team order
+    var firstTeam = this.supportedLeagues[league].homeTeamFirst ? 'home' : 'visitor'
+    var secondTeam = this.supportedLeagues[league].homeTeamFirst ? 'visitor' : 'home'
+    
+    // Create rows for both teams
+    var teams = [
+      { key: firstTeam, name: firstTeam === 'home' ? gameObj.hTeamLong : gameObj.vTeamLong, 
+        abbr: firstTeam === 'home' ? gameObj.hTeam : gameObj.vTeam,
+        score: firstTeam === 'home' ? gameObj.hScore : gameObj.vScore,
+        ranking: firstTeam === 'home' ? gameObj.hTeamRanking : gameObj.vTeamRanking },
+      { key: secondTeam, name: secondTeam === 'home' ? gameObj.hTeamLong : gameObj.vTeamLong,
+        abbr: secondTeam === 'home' ? gameObj.hTeam : gameObj.vTeam, 
+        score: secondTeam === 'home' ? gameObj.hScore : gameObj.vScore,
+        ranking: secondTeam === 'home' ? gameObj.hTeamRanking : gameObj.vTeamRanking }
+    ]
+    
+    teams.forEach(function(team) {
+      var row = document.createElement('tr')
+      
+      // Logo cell
+      var logoCell = document.createElement('td')
+      logoCell.classList.add('logo-cell')
+      var logo = document.createElement('img')
+      logo.classList.add('logo', team.key)
+      
+      if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(team.abbr + '.svg') !== -1) {
+        logo.src = this.file('logos_custom/' + leagueForLogoPath + '/' + team.abbr + '.svg')
       }
-    }
-    // }
-    /* if (gameObj.broadcast.length > 1) {
-      broadcastPart.innerHTML += `<span class="moreBroadcasts">+${gameObj.broadcast.length - 1}</span>`
-    } */
-    status.appendChild(broadcastPart)
-    boxScore.appendChild(status)
-
-    // add scores if game in progress or finished
-    if (gameObj.gameMode != this.gameModes.FUTURE) {
-      var hTeamScore = document.createElement('span')
-      hTeamScore.classList.add('score', 'home')
-      hTeamScore.innerHTML = (gameObj.hScore)
-      boxScore.appendChild(hTeamScore)
-
-      var vTeamScore = document.createElement('span')
-      vTeamScore.classList.add('score', 'visitor')
-      vTeamScore.innerHTML = (gameObj.vScore)
-      boxScore.appendChild(vTeamScore)
-    }
+      else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(team.abbr + '.png') !== -1) {
+        logo.src = this.file('logos_custom/' + leagueForLogoPath + '/' + team.abbr + '.png')
+      }
+      else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(team.abbr + '.svg') !== -1) {
+        logo.src = this.file('logos/' + leagueForLogoPath + '/' + team.abbr + '.svg')
+      }
+      else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(team.abbr + '.png') !== -1) {
+        logo.src = this.file('logos/' + leagueForLogoPath + '/' + team.abbr + '.png')
+      }
+      else {
+        logo.src = team.key === 'home' ? gameObj.hTeamLogoUrl : gameObj.vTeamLogoUrl
+      }
+      logo.setAttribute('data-abbr', team.abbr)
+      logoCell.appendChild(logo)
+      row.appendChild(logoCell)
+      
+      // Team name cell
+      var nameCell = document.createElement('td')
+      nameCell.classList.add('team-name-cell')
+      var teamName = document.createElement('span')
+      teamName.classList.add('team-name', team.key)
+      teamName.innerHTML = (this.config.showRankings && team.ranking ? '<span class="ranking">' + team.ranking + '</span>' : '') + team.name
+      nameCell.appendChild(teamName)
+      row.appendChild(nameCell)
+      
+      // Score cell
+      var scoreCell = document.createElement('td')
+      scoreCell.classList.add('score-cell')
+      if (gameObj.gameMode !== this.gameModes.FUTURE) {
+        var score = document.createElement('span')
+        score.classList.add('score', team.key)
+        score.innerHTML = team.score
+        scoreCell.appendChild(score)
+      }
+      row.appendChild(scoreCell)
+      
+      // Status cell (only add to first row)
+      if (team.key === teams[0].key) {
+        var statusCell = document.createElement('td')
+        statusCell.classList.add('status-cell')
+        statusCell.setAttribute('rowspan', '2') // Span both rows
+        
+        // Create status content
+        var statusDiv = document.createElement('div')
+        statusDiv.classList.add('status')
+        gameObj.status.forEach(function (s) {
+          var statusPart = document.createElement('div')
+          statusPart.innerHTML = s
+          statusPart.classList.add('statusPart')
+          statusDiv.appendChild(statusPart)
+        })
+        
+        // Add broadcast information
+        var broadcastPart = document.createElement('div')
+        broadcastPart.classList.add('broadcast')
+        if (gameObj.broadcast != null) {
+          for (var i = 0; i < gameObj.broadcast.length; i++) {
+            var broadcastPartDiv = document.createElement('div')
+            broadcastPartDiv.classList.add('broadcastIconDiv')
+            broadcastPartDiv.innerHTML += gameObj.broadcast[i]
+            broadcastPart.appendChild(broadcastPartDiv)
+          }
+        }
+        statusDiv.appendChild(broadcastPart)
+        statusCell.appendChild(statusDiv)
+        row.appendChild(statusCell)
+      }
+      
+      gameTable.appendChild(row)
+    }.bind(this))
+    
+    boxScore.appendChild(gameTable)
 
     // add classes to final games
     if (gameObj.gameMode == this.gameModes.FINAL) {

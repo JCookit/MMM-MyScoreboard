@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Table Layout Test</title>
+    <link rel="stylesheet" type="text/css" href="MMM-MyScoreboard.css">
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: "Roboto Condensed", Arial, sans-serif;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="MMM-MyScoreboard colored">
+        <div class="wrapper colored">
+            
+            <!-- Test sport header -->
+            <div class="sport-separator">
+                <span>NFL</span>
+            </div>
+            
+            <!-- Test game 1 - Completed -->
+            <div class="box-score completed home-team-first stackedWithLogos NFL">
+                <table class="game-table">
+                    <tr class="visitor-row">
+                        <td class="logo-cell">
+                            <img class="logo visitor" src="logos/NFL/KC.svg" alt="KC">
+                        </td>
+                        <td class="team-name-cell">
+                            <span class="team-name visitor">Kansas City Chiefs</span>
+                        </td>
+                        <td class="score-cell">
+                            <span class="score visitor">28</span>
+                        </td>
+                    </tr>
+                    <tr class="home-row">
+                        <td class="logo-cell">
+                            <img class="logo home" src="logos/NFL/BUF.svg" alt="BUF">
+                        </td>
+                        <td class="team-name-cell">
+                            <span class="team-name home">Buffalo Bills</span>
+                        </td>
+                        <td class="score-cell">
+                            <span class="score home">21</span>
+                        </td>
+                    </tr>
+                </table>
+                <div class="status">
+                    <span class="statusPart">FINAL</span>
+                </div>
+                <div class="broadcast">
+                    <div class="broadcastIconDiv">
+                        <span>CBS</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test game 2 - In Progress -->
+            <div class="box-score in-progress home-team-first stackedWithLogos NFL">
+                <table class="game-table">
+                    <tr class="visitor-row">
+                        <td class="logo-cell">
+                            <img class="logo visitor" src="logos/NFL/LAR.svg" alt="LAR">
+                        </td>
+                        <td class="team-name-cell">
+                            <span class="team-name visitor">Los Angeles Rams</span>
+                        </td>
+                        <td class="score-cell">
+                            <span class="score visitor">14</span>
+                        </td>
+                    </tr>
+                    <tr class="home-row">
+                        <td class="logo-cell">
+                            <img class="logo home" src="logos/NFL/SF.svg" alt="SF">
+                        </td>
+                        <td class="team-name-cell">
+                            <span class="team-name home">San Francisco 49ers</span>
+                        </td>
+                        <td class="score-cell">
+                            <span class="score home">17</span>
+                        </td>
+                    </tr>
+                </table>
+                <div class="status">
+                    <span class="statusPart">Q3 8:32</span>
+                </div>
+                <div class="broadcast">
+                    <div class="broadcastIconDiv">
+                        <span>FOX</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Test game 3 - Future with playoff status -->
+            <div class="box-score future home-team-first stackedWithLogos NFL playoff">
+                <table class="game-table">
+                    <tr class="visitor-row">
+                        <td class="logo-cell">
+                            <img class="logo visitor" src="logos/NFL/GB.svg" alt="GB">
+                        </td>
+                        <td class="team-name-cell">
+                            <span class="team-name visitor">Green Bay Packers</span>
+                        </td>
+                        <td class="score-cell">
+                            <span class="score visitor">-</span>
+                        </td>
+                    </tr>
+                    <tr class="home-row">
+                        <td class="logo-cell">
+                            <img class="logo home" src="logos/NFL/DET.svg" alt="DET">
+                        </td>
+                        <td class="team-name-cell">
+                            <span class="team-name home">Detroit Lions</span>
+                        </td>
+                        <td class="score-cell">
+                            <span class="score home">-</span>
+                        </td>
+                    </tr>
+                </table>
+                <div class="status">
+                    <span class="statusPart">8:20 PM</span>
+                </div>
+                <div class="broadcast">
+                    <div class="broadcastIconDiv">
+                        <span>NBC</span>
+                    </div>
+                </div>
+                <div class="playoffStatus">NFC Wild Card</div>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>
