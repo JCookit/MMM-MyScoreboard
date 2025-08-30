@@ -94,7 +94,7 @@ module.exports = NodeHelper.create({
     }
     
     Log.debug(`[MMM-MyScoreboard] 📅 Fetching ${dateKey} (offset: ${dayOffset})`)
-    const { userGames } = await this.fetchAndProcessDayAsync(payload, targetDate, dayOffset)
+    const { userGames } = await this.fetchAndProcessDay(payload, targetDate, dayOffset)
     
     if (userGames && userGames.length > 0) {
       Log.debug(`[MMM-MyScoreboard] 📈 Found ${userGames.length} games for ${dateKey}`)
@@ -223,17 +223,8 @@ module.exports = NodeHelper.create({
     return gamesByDay
   },
   
-  // Async wrapper for fetchAndProcessDay
-  fetchAndProcessDayAsync: function(payload, targetDate, dayOffset) {
-    return new Promise((resolve, reject) => {
-      this.fetchAndProcessDay(payload, targetDate, dayOffset, (userGames, allGames) => {
-        resolve({ userGames, allGames })
-      })
-    })
-  },
-
   // Fetch and process a single day's games
-  fetchAndProcessDay: function(payload, targetDate, dayOffset, callback) {
+  async fetchAndProcessDay(payload, targetDate, dayOffset) {
     const self = this
     const league = payload.league
     const teams = payload.teams
@@ -250,7 +241,7 @@ module.exports = NodeHelper.create({
       Log.debug(`[MMM-MyScoreboard] 📊 Cached data: ${cachedGames.length} total games`)
       const userGames = this.filterGamesForTeams(cachedGames, teams)
       Log.debug(`[MMM-MyScoreboard] 🎯 Filtered to ${userGames.length} user games`)
-      return callback(userGames, cachedGames)
+      return { userGames, allGames: cachedGames }
     }
     
     // Fetch from provider
@@ -260,34 +251,36 @@ module.exports = NodeHelper.create({
     
     //Log.debug(`[MMM-MyScoreboard] 📤 Provider payload:`, JSON.stringify(dayPayload, null, 2))
     
-    provider.getScores(dayPayload, targetDate, function(scores, sortIdx, noGamesToday) {
-      Log.debug(`[MMM-MyScoreboard] 📥 Provider response for ${league} on ${dateStr}:`)
-      Log.debug(`[MMM-MyScoreboard]    - scores: ${scores ? scores.length : 'null/undefined'} games`)
-      Log.debug(`[MMM-MyScoreboard]    - sortIdx: ${sortIdx}`)
-      Log.debug(`[MMM-MyScoreboard]    - noGamesToday: ${noGamesToday}`)
-      
-      // if (scores && scores.length > 0) {
-      //   Log.debug(`[MMM-MyScoreboard] 📋 First game sample:`, JSON.stringify(scores[0], null, 2))
-      // }
-      
-      // Store in cache only for non-today dates
-      const games = scores || []
-      if (!isToday) {
-        self.gamesCache[cacheKey] = games
-        Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} games for ${league} on ${dateStr}`)
-      } else {
-        Log.debug(`[MMM-MyScoreboard] ⚡ Not caching today's games - fetched ${games.length} games for ${league}`)
-      }
-      
-      // Filter for user's teams
-      const userGames = self.filterGamesForTeams(games, teams)
-      Log.debug(`[MMM-MyScoreboard] 🎯 Filtered to ${userGames.length} user games for teams [${teams.join(', ')}]`)
-      
-      // if (userGames.length > 0) {
-      //   Log.debug(`[MMM-MyScoreboard] 🎮 User games sample:`, JSON.stringify(userGames[0], null, 2))
-      // }
-      
-      callback(userGames, games)
+    return new Promise((resolve, reject) => {
+      provider.getScores(dayPayload, targetDate, function(scores, sortIdx, noGamesToday) {
+        Log.debug(`[MMM-MyScoreboard] 📥 Provider response for ${league} on ${dateStr}:`)
+        Log.debug(`[MMM-MyScoreboard]    - scores: ${scores ? scores.length : 'null/undefined'} games`)
+        Log.debug(`[MMM-MyScoreboard]    - sortIdx: ${sortIdx}`)
+        Log.debug(`[MMM-MyScoreboard]    - noGamesToday: ${noGamesToday}`)
+        
+        // if (scores && scores.length > 0) {
+        //   Log.debug(`[MMM-MyScoreboard] 📋 First game sample:`, JSON.stringify(scores[0], null, 2))
+        // }
+        
+        // Store in cache only for non-today dates
+        const games = scores || []
+        if (!isToday) {
+          self.gamesCache[cacheKey] = games
+          Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} games for ${league} on ${dateStr}`)
+        } else {
+          Log.debug(`[MMM-MyScoreboard] ⚡ Not caching today's games - fetched ${games.length} games for ${league}`)
+        }
+        
+        // Filter for user's teams
+        const userGames = self.filterGamesForTeams(games, teams)
+        Log.debug(`[MMM-MyScoreboard] 🎯 Filtered to ${userGames.length} user games for teams [${teams.join(', ')}]`)
+        
+        // if (userGames.length > 0) {
+        //   Log.debug(`[MMM-MyScoreboard] 🎮 User games sample:`, JSON.stringify(userGames[0], null, 2))
+        // }
+        
+        resolve({ userGames, allGames: games })
+      })
     })
   },
   
