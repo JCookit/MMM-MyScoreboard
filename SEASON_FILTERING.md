@@ -1,8 +1,11 @@
-# Season Date Range Filtering
+# Season Date Range Filtering & Minimum Games
 
-The MMM-MyScoreboard module now supports season date ranges to automatically filter leagues based on their active seasons. This prevents unnecessary API calls during off-seasons and keeps the display clean.
+The MMM-MyScoreboard module now supports two major features to ensure you always see relevant content:
 
-## Configuration
+1. **Season date ranges** to automatically filter leagues based on their active seasons
+2. **Minimum games guarantee** to show a specified number of games even during bye weeks or off-days
+
+## Season Configuration
 
 Add `from` and `to` fields to your sports configuration:
 
@@ -23,28 +26,70 @@ Add `from` and `to` fields to your sports configuration:
         from: "03-01",    // Spring training starts
         to: "11-15",      // World Series ends
         teams: ["SEA", "TOR", "CHI", "BOS"]
-      },
-      {
-        league: "NHL",
-        from: "10-01",    // NHL season starts
-        to: "06-30",      // Stanley Cup ends
-        teams: ["TOR", "BOS"]
-      },
-      {
-        league: "NBA",
-        from: "10-15",    // NBA season starts
-        to: "06-15",      // NBA Finals end
-        teams: ["TOR", "LAL"]
       }
     ]
   }
 }
 ```
 
-## Date Format
+## Minimum Games Configuration
 
-- **Format**: `MM-DD` (e.g., "03-01" for March 1st)
-- **Optional**: If not specified, defaults to `"01-01"` to `"12-31"` (full year)
+Add `minimumNumberOfGames` to ensure you always see at least N games:
+
+```javascript
+{
+  module: 'MMM-MyScoreboard',
+  position: 'top_right',
+  config: {
+    sports: [
+      {
+        league: "MLB",
+        from: "03-01",
+        to: "11-15",
+        minimumNumberOfGames: 3,  // Always show at least 3 games
+        teams: ["SEA", "TOR", "CHI", "BOS"]
+      },
+      {
+        league: "NFL", 
+        from: "09-01",
+        to: "02-15",
+        minimumNumberOfGames: 1,  // Show at least 1 game (useful for bye weeks)
+        teams: ["KC", "NE"]
+      }
+    ]
+  }
+}
+```
+
+## Minimum Games Algorithm
+
+When `minimumNumberOfGames` > 0, the backend uses this algorithm:
+
+1. **Fetch today's games** and filter for your configured teams
+2. **Check minimum**: If you have ≥ minimumNumberOfGames, stop
+3. **Expand search**: Look N days ago AND N days in the future (N = 1, 2, 3...)
+4. **Repeat** until minimum reached or maximum search range (20 days) exceeded
+5. **Respect seasons**: Only search dates within the league's season range
+
+### Search Pattern Example
+```
+Day 0:  Today
+Day -1: Yesterday    Day +1: Tomorrow  
+Day -2: 2 days ago   Day +2: 2 days future
+Day -3: 3 days ago   Day +3: 3 days future
+... up to ±20 days
+```
+
+### Caching & Performance
+- **Daily cache**: Results cached per day to avoid duplicate API calls
+- **Automatic cleanup**: Cache cleared when date changes
+- **Season-aware**: Won't make API calls for out-of-season dates
+- **Early exit**: Stops searching as soon as minimum is reached
+
+## Parameter Defaults
+
+- **from/to**: If not specified, defaults to year-round (`"01-01"` to `"12-31"`)
+- **minimumNumberOfGames**: If not specified, defaults to `0` (original behavior)
 
 ## Year Wraparound Support
 

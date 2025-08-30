@@ -36,6 +36,30 @@
   white-space: nowrap;
 }
 
+/* Multi-day game styling */
+.MMM-MyScoreboard .multi-day-game {
+  opacity: 0.85; /* Slightly dimmed to differentiate from today */
+}
+
+.MMM-MyScoreboard .multi-day-game.past-1,
+.MMM-MyScoreboard .multi-day-game.past-2,
+.MMM-MyScoreboard .multi-day-game.past-3 {
+  opacity: 0.75; /* Past games more dimmed */
+}
+
+.MMM-MyScoreboard .multi-day-game.future-1,
+.MMM-MyScoreboard .multi-day-game.future-2,
+.MMM-MyScoreboard .multi-day-game.future-3 {
+  opacity: 0.8; /* Future games slightly dimmed */
+  font-style: italic; /* Italics for future games */
+}
+
+/* Very distant games are most dimmed */
+.MMM-MyScoreboard .multi-day-game[class*="past-"]:not(.past-1):not(.past-2):not(.past-3),
+.MMM-MyScoreboard .multi-day-game[class*="future-"]:not(.future-1):not(.future-2):not(.future-3) {
+  opacity: 0.65;
+}
+
 /*
 .MMM-MyScoreboard .league-separator > span:after {
   content: "";

@@ -16,11 +16,12 @@ Module.register('MMM-MyScoreboard', {
   defaults: {
     showLeagueSeparators: true,
     colored: true,
-    rolloverHours: 3, // hours past midnight to show the pervious day's scores
-    alwaysShowToday: false, // show BOTH today and yesterday during rolloverHours
+    rolloverHours: 3, // DEPRECATED - use minimumNumberOfGames instead
+    alwaysShowToday: false, // DEPRECATED - use minimumNumberOfGames instead
+    minimumNumberOfGames: 0, // NEW: minimum games to show (0 = original behavior)
     shadeRows: false,
     highlightWinners: true,
-    viewStyle: 'largeLogos',
+    viewStyle: 'stackedWithLogos',
     showRankings: true,
     hideBroadcasts: false,
     showLocalBroadcasts: false,
@@ -294,13 +295,7 @@ Module.register('MMM-MyScoreboard', {
   },
 
   viewStyles: [
-    'largeLogos',
-    'mediumLogos',
-    'smallLogos',
-    'oneLine',
-    'oneLineWithLogos',
-    'stacked',
-    'stackedWithLogos',
+    'stackedWithLogos'  // Simplified to only support this viewStyle
   ],
 
   localLogos: {},
@@ -319,48 +314,64 @@ Module.register('MMM-MyScoreboard', {
     return moment().add(this.config.debugHours, 'hours').add(this.config.debugMinutes, 'minutes')
   },
 
-  viewStyleHasLogos: function (v) {
-    switch (v) {
-      case 'largeLogos':
-      case 'mediumLogos':
-      case 'smallLogos':
-      case 'oneLineWithLogos':
-      case 'stackedWithLogos':
-        return true
-      default:
-        return false
-    }
+  // Generate human-readable labels from date keys
+  getDayLabel: function(dateKey, baseDate) {
+    const baseMoment = baseDate || this.getCurrentMoment()
+    const dayMoment = moment(dateKey, 'YYYY-MM-DD')
+    const dayDiff = dayMoment.diff(baseMoment.startOf('day'), 'days')
+    
+    if (dayDiff === 0) return 'Today'
+    if (dayDiff === -1) return 'Yesterday'
+    if (dayDiff === 1) return 'Tomorrow'
+    if (dayDiff < 0) return `${Math.abs(dayDiff)} days ago`
+    return `in ${dayDiff} days`
   },
 
-  viewStyleHasRankingOverlay: function (v) {
-    switch (v) {
-      case 'largeLogos':
-      case 'mediumLogos':
-      case 'smallLogos':
-        return true
-      default:
-        return false
-    }
-  },
-
-  viewStyleHasShortcodes: function (v) {
-    switch (v) {
-      case 'oneLine':
-      case 'oneLineWithLogos':
-        return true
-      default:
-        return false
-    }
-  },
-
-  viewStyleHasLongNames: function (v) {
-    switch (v) {
-      case 'stacked':
-      case 'stackedWithLogos':
-        return true
-      default:
-        return false
-    }
+  // Helper to get all multi-day data sorted by day offset
+  getSortedMultiDayData: function() {
+    Log.debug(`[MMM-MyScoreboard] 🔄 getSortedMultiDayData() called`)
+    const allDays = []
+    
+    // Process multi-day structure (now contains ALL data including today/yesterday from legacy handlers)
+    Object.entries(this.sportsDataMultiDay).forEach(([sport, dayData]) => {
+      Log.debug(`[MMM-MyScoreboard] 🏈 Processing sport: ${sport}`)
+      Object.entries(dayData).forEach(([dayKey, data]) => {
+        let dayOffset = 0
+        
+        // Calculate day offset from date key (YYYY-MM-DD format)
+        const dayMoment = moment(dayKey, 'YYYY-MM-DD')
+        const todayMoment = this.getCurrentMoment().startOf('day')
+        dayOffset = dayMoment.diff(todayMoment, 'days')
+        
+        const label = this.getDayLabel(dayKey)
+        
+        Log.debug(`[MMM-MyScoreboard]    - Day "${dayKey}" (offset: ${dayOffset}): ${data.scores ? data.scores.length : 'no scores'} games, label: "${label}"`)
+        
+        allDays.push({
+          sport: sport,
+          dayKey: dayKey,
+          dayOffset: dayOffset,
+          data: data,
+          label: label
+        })
+      })
+    })
+    
+    // Sort by day offset (past days first, then today, then future days)
+    // Then by sport sortIdx within each day
+    const sorted = allDays.sort((a, b) => {
+      if (a.dayOffset !== b.dayOffset) {
+        return a.dayOffset - b.dayOffset
+      }
+      return (a.data.sortIdx || 0) - (b.data.sortIdx || 0)
+    })
+    
+    Log.debug(`[MMM-MyScoreboard] 📋 Sorted ${sorted.length} day entries:`)
+    sorted.forEach((day, idx) => {
+      Log.debug(`[MMM-MyScoreboard]    ${idx}: ${day.sport} ${day.dayKey} (offset: ${day.dayOffset}) - ${day.data.scores ? day.data.scores.length : 0} games`)
+    })
+    
+    return sorted
   },
 
   // New Scroll Animation Function
@@ -425,11 +436,11 @@ Module.register('MMM-MyScoreboard', {
    </div>
    ******************************************************************/
   boxScoreFactory: function (league, gameObj, label) {
-    var viewStyle = this.config.viewStyle
-
+    // Simplified for stackedWithLogos only
     var boxScore = document.createElement('div')
     boxScore.classList.add('box-score', league.replaceAll(' ', ''))
-    boxScore.classList.add(viewStyle)
+    boxScore.classList.add('stackedWithLogos')
+    
     if (gameObj.gameMode == this.gameModes.IN_PROGRESS) {
       boxScore.classList.add('in-progress')
     }
@@ -442,8 +453,7 @@ Module.register('MMM-MyScoreboard', {
       boxScore.classList.add('home-team-first')
     }
 
-    // redirect path to logos to NCAAM
-    // for March Madness
+    // redirect path to logos to NCAAM for March Madness
     var leagueForLogoPath = league
     if (league.startsWith('NCAA')) {
       leagueForLogoPath = 'NCAA'
@@ -452,116 +462,68 @@ Module.register('MMM-MyScoreboard', {
       leagueForLogoPath = label
     }
 
-    // add team logos if applicable
-    if (this.viewStyleHasLogos(viewStyle)) {
-      var hTeamLogo = document.createElement('span')
-      hTeamLogo.classList.add('logo', 'home')
+    // stackedWithLogos always has logos - add home team logo
+    var hTeamLogo = document.createElement('span')
+    hTeamLogo.classList.add('logo', 'home')
 
-      var hTeamLogoImg = document.createElement('img')
+    var hTeamLogoImg = document.createElement('img')
 
-      if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.hTeam + '.svg') !== -1) {
-        hTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.hTeam + '.svg')
-      }
-      else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.hTeam + '.png') !== -1) {
-        hTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.hTeam + '.png')
-      }
-      else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + '.svg') !== -1) {
-        hTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.hTeam + '.svg')
-      }
-      else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + '.png') !== -1) {
-        hTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.hTeam + '.png')
-      }
-      else {
-        hTeamLogoImg.src = gameObj.hTeamLogoUrl
-      }
-
-      hTeamLogoImg.setAttribute('data-abbr', gameObj.hTeam)
-
-      hTeamLogo.appendChild(hTeamLogoImg)
-
-      if (this.config.showRankings && this.viewStyleHasRankingOverlay(viewStyle) && gameObj.hTeamRanking) {
-        var hTeamRankingOverlay = document.createElement('span')
-        hTeamRankingOverlay.classList.add('ranking')
-        hTeamRankingOverlay.innerHTML = gameObj.hTeamRanking
-        hTeamLogo.appendChild(hTeamRankingOverlay)
-      }
-      boxScore.appendChild(hTeamLogo)
-
-      var vTeamLogo = document.createElement('span')
-      vTeamLogo.classList.add('logo', 'visitor')
-
-      var vTeamLogoImg = document.createElement('img')
-
-      if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.vTeam + '.svg') !== -1) {
-        vTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.vTeam + '.svg')
-      }
-      else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.vTeam + '.png') !== -1) {
-        vTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.vTeam + '.png')
-      }
-      else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + '.svg') !== -1) {
-        vTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.vTeam + '.svg')
-      }
-      else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + '.png') !== -1) {
-        vTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.vTeam + '.png')
-      }
-      else {
-        vTeamLogoImg.src = gameObj.vTeamLogoUrl
-      }
-
-      vTeamLogoImg.setAttribute('data-abbr', gameObj.vTeam)
-
-      vTeamLogo.appendChild(vTeamLogoImg)
-
-      if (this.config.showRankings && this.viewStyleHasRankingOverlay(viewStyle) && gameObj.vTeamRanking) {
-        var vTeamRankingOverlay = document.createElement('span')
-        vTeamRankingOverlay.classList.add('ranking')
-        vTeamRankingOverlay.innerHTML = gameObj.vTeamRanking
-        vTeamLogo.appendChild(vTeamRankingOverlay)
-      }
-      boxScore.appendChild(vTeamLogo)
+    if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.hTeam + '.svg') !== -1) {
+      hTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.hTeam + '.svg')
+    }
+    else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.hTeam + '.png') !== -1) {
+      hTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.hTeam + '.png')
+    }
+    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + '.svg') !== -1) {
+      hTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.hTeam + '.svg')
+    }
+    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.hTeam + '.png') !== -1) {
+      hTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.hTeam + '.png')
+    }
+    else {
+      hTeamLogoImg.src = gameObj.hTeamLogoUrl
     }
 
-    // add team shortcodes if applicable
-    if (this.viewStyleHasShortcodes(viewStyle)) {
-      var hTeamSC = document.createElement('span')
-      hTeamSC.classList.add('team-short-code', 'home')
-      hTeamSC.innerHTML = (this.config.showRankings && gameObj.hTeamRanking ? '<span class="ranking">' + gameObj.hTeamRanking + '</span>' : '') + gameObj.hTeam
-      boxScore.appendChild(hTeamSC)
+    hTeamLogoImg.setAttribute('data-abbr', gameObj.hTeam)
+    hTeamLogo.appendChild(hTeamLogoImg)
+    boxScore.appendChild(hTeamLogo)
 
-      var vTeamSC = document.createElement('span')
-      vTeamSC.classList.add('team-short-code', 'visitor')
-      vTeamSC.innerHTML = (this.config.showRankings && gameObj.vTeamRanking ? '<span class="ranking">' + gameObj.vTeamRanking + '</span>' : '') + gameObj.vTeam
-      boxScore.appendChild(vTeamSC)
+    // add visitor team logo  
+    var vTeamLogo = document.createElement('span')
+    vTeamLogo.classList.add('logo', 'visitor')
+
+    var vTeamLogoImg = document.createElement('img')
+
+    if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.vTeam + '.svg') !== -1) {
+      vTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.vTeam + '.svg')
+    }
+    else if (this.localLogosCustom[leagueForLogoPath] && this.localLogosCustom[leagueForLogoPath].indexOf(gameObj.vTeam + '.png') !== -1) {
+      vTeamLogoImg.src = this.file('logos_custom/' + leagueForLogoPath + '/' + gameObj.vTeam + '.png')
+    }
+    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + '.svg') !== -1) {
+      vTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.vTeam + '.svg')
+    }
+    else if (this.localLogos[leagueForLogoPath] && this.localLogos[leagueForLogoPath].indexOf(gameObj.vTeam + '.png') !== -1) {
+      vTeamLogoImg.src = this.file('logos/' + leagueForLogoPath + '/' + gameObj.vTeam + '.png')
+    }
+    else {
+      vTeamLogoImg.src = gameObj.vTeamLogoUrl
     }
 
-    // add team names if applicable
-    if (this.viewStyleHasLongNames(viewStyle)) {
-      var hTeamName = document.createElement('span')
-      hTeamName.classList.add('team-name', 'home')
-      hTeamName.innerHTML = (this.config.showRankings && gameObj.hTeamRanking ? '<span class="ranking">' + gameObj.hTeamRanking + '</span>' : '') + gameObj.hTeamLong
-      boxScore.appendChild(hTeamName)
+    vTeamLogoImg.setAttribute('data-abbr', gameObj.vTeam)
+    vTeamLogo.appendChild(vTeamLogoImg)
+    boxScore.appendChild(vTeamLogo)
 
-      var vTeamName = document.createElement('span')
-      vTeamName.classList.add('team-name', 'visitor')
-      vTeamName.innerHTML = (this.config.showRankings && gameObj.vTeamRanking ? '<span class="ranking">' + gameObj.vTeamRanking + '</span>' : '') + gameObj.vTeamLong
-      boxScore.appendChild(vTeamName)
-    }
+    // stackedWithLogos always has long team names
+    var hTeamName = document.createElement('span')
+    hTeamName.classList.add('team-name', 'home')
+    hTeamName.innerHTML = (this.config.showRankings && gameObj.hTeamRanking ? '<span class="ranking">' + gameObj.hTeamRanking + '</span>' : '') + gameObj.hTeamLong
+    boxScore.appendChild(hTeamName)
 
-    // add "@" for games not yet started for the oneLine
-    // and oneLineWithLogos view styles
-    if (gameObj.gameMode == this.gameModes.FUTURE
-      && (viewStyle == 'oneLine' || viewStyle == 'oneLineWithLogos')) {
-      var vsSymbol = document.createElement('span')
-      vsSymbol.classList.add('vs-symbol')
-      // Soccer games we don't say AT (@) but VS thus the HOME team is first (Chelsea Vs Manchester - Chelsea's Home instead of Manchester @ Chelsea)
-      if (this.supportedLeagues[league].homeTeamFirst) {
-        vsSymbol.innerHTML = 'vs'
-      }
-      else {
-        vsSymbol.innerHTML = '@'
-      }
-      boxScore.appendChild(vsSymbol)
-    }
+    var vTeamName = document.createElement('span')
+    vTeamName.classList.add('team-name', 'visitor')
+    vTeamName.innerHTML = (this.config.showRankings && gameObj.vTeamRanking ? '<span class="ranking">' + gameObj.vTeamRanking + '</span>' : '') + gameObj.vTeamLong
+    boxScore.appendChild(vTeamName)
 
     // add game status
     var status = document.createElement('div')
@@ -645,23 +607,17 @@ Module.register('MMM-MyScoreboard', {
     return boxScore
   },
 
-  // Override dom generator.
+  // Override dom generator - simplified for stackedWithLogos only
   getDom: function () {
+    Log.debug(`[MMM-MyScoreboard] 🏗️ getDom() called`)
+    
     var wrapper = document.createElement('div')
     wrapper.classList.add('wrapper')
 
-    /*
-      Set up basic classes
-    */
-    if (this.config.colored) {
-      wrapper.classList.add('colored')
-    }
-    if (this.config.shadeRows) {
-      wrapper.classList.add('shade-rows')
-    }
-    if (!this.config.showLeagueSeparators) {
-      wrapper.classList.add('no-league-separators')
-    }
+    // Set up basic classes (simplified for our specific config)
+    wrapper.classList.add('colored')  // colored: true
+    // shadeRows: false (default, no class added)
+    // showLeagueSeparators: true (default, no class added)  
     if (this.config.highlightWinners) {
       wrapper.classList.add('highlight-winners')
     }
@@ -670,12 +626,24 @@ Module.register('MMM-MyScoreboard', {
       Show "Loading" when there's no data initially.
     */
     if (!this.loaded) {
+      Log.debug(`[MMM-MyScoreboard] ⏳ Not loaded yet, showing loading message`)
       var loadingText = document.createElement('div')
       loadingText.innerHTML = this.translate('Loading MMM-MyScoreboard...')
       loadingText.className = 'dimmed light small'
       wrapper.appendChild(loadingText)
       return wrapper
     }
+
+    Log.debug(`[MMM-MyScoreboard] ✅ Loaded, processing data...`)
+    Log.debug(`[MMM-MyScoreboard] 📊 sportsDataMultiDay keys: [${Object.keys(this.sportsDataMultiDay).join(', ')}]`)
+    
+    // Log all data structure
+    Object.entries(this.sportsDataMultiDay).forEach(([sport, dayData]) => {
+      Log.debug(`[MMM-MyScoreboard] 🏈 Sport "${sport}" has days: [${Object.keys(dayData).join(', ')}]`)
+      Object.entries(dayData).forEach(([dayKey, data]) => {
+        Log.debug(`[MMM-MyScoreboard]    - Day "${dayKey}": ${data.scores ? data.scores.length : 'no scores'} games`)
+      })
+    })
 
     // New property to set wrapper height for animations
     if (this.config.maxHeight < 10000) {
@@ -686,104 +654,87 @@ Module.register('MMM-MyScoreboard', {
       Run through the leagues and generate box score displays for
       each game.
     */
-    // var anyGames = false
     var self = this
 
-    /* this.config.sports.forEach(function (sport) {
-      var leagueSeparator = []
-      if (self.sportsData[sport.league] != null && self.sportsData[sport.league].length > 0) {
-        // anyGames = true
-        if (self.config.showLeagueSeparators) {
-          leagueSeparator = document.createElement('div')
+    // Group by sport first, then show day headers within each sport
+    const allDayData = this.getSortedMultiDayData()
+    
+    Log.debug(`[MMM-MyScoreboard] 🎨 Rendering ${allDayData.length} day entries`)
+    
+    // Group by sport first
+    const sportGroups = {}
+    allDayData.forEach(dayData => {
+      const sportKey = dayData.sport
+      if (!sportGroups[sportKey]) {
+        sportGroups[sportKey] = {
+          sport: sportKey,
+          days: {},
+          sortIdx: dayData.data.sortIdx || 0
+        }
+      }
+      sportGroups[sportKey].days[dayData.dayKey] = {
+        dayOffset: dayData.dayOffset,
+        label: dayData.label,
+        data: dayData.data
+      }
+    })
+    
+    // Sort sports by their sort index (following config.sports order)
+    const sortedSports = Object.keys(sportGroups).sort((a, b) => {
+      return (sportGroups[a].sortIdx || 0) - (sportGroups[b].sortIdx || 0)
+    })
+    
+    Log.debug(`[MMM-MyScoreboard] 🏈 Sport groups: [${sortedSports.join(', ')}]`)
+    
+    // Render each sport with its days
+    sortedSports.forEach(sportKey => {
+      const sportGroup = sportGroups[sportKey]
+      
+      // Sort days within this sport by offset
+      const sortedDayKeys = Object.keys(sportGroup.days).sort((a, b) => {
+        return sportGroup.days[a].dayOffset - sportGroup.days[b].dayOffset
+      })
+      
+      Log.debug(`[MMM-MyScoreboard] 🎯 Rendering sport ${sportKey} with days: [${sortedDayKeys.join(', ')}]`)
+      
+      // Render each day within this sport
+      sortedDayKeys.forEach(dayKey => {
+        const dayData = sportGroup.days[dayKey]
+        const scores = dayData.data
+        
+        if (scores && scores.scores && scores.scores.length > 0) {
+          // Add league separator (showLeagueSeparators is always true)
+          const leagueSeparator = document.createElement('div')
           leagueSeparator.classList.add('league-separator')
-          if (sport.label) {
-            leagueSeparator.innerHTML = '<span>' + sport.label + '</span>'
+          
+          let separatorText = sportKey
+          if (dayData.label) {
+            separatorText += ` - ${dayData.label}`
           }
-          else {
-            leagueSeparator.innerHTML = '<span>' + sport.league + '</span>'
-          }
+          
+          leagueSeparator.innerHTML = '<span>' + separatorText + '</span>'
           wrapper.appendChild(leagueSeparator)
+          
+          // Add games for this sport on this day
+          scores.scores.forEach(function (game, gidx) {
+            const boxScore = self.boxScoreFactory(scores.league, game, sportKey)
+            boxScore.classList.add(gidx % 2 == 0 ? 'odd' : 'even')
+            
+            // Add day-specific CSS class for styling
+            if (dayData.dayOffset !== 0) {
+              boxScore.classList.add('multi-day-game')
+              if (dayData.dayOffset < 0) {
+                boxScore.classList.add(`past-${Math.abs(dayData.dayOffset)}`)
+              } else {
+                boxScore.classList.add(`future-${dayData.dayOffset}`)
+              }
+            }
+            
+            wrapper.appendChild(boxScore)
+          })
         }
-        self.sportsData[sport.league].forEach(function (game, gidx) {
-          var boxScore = self.boxScoreFactory(sport.league, game)
-          boxScore.classList.add(gidx % 2 == 0 ? 'odd' : 'even')
-          wrapper.appendChild(boxScore)
-        })
-      }
-      if (self.sportsDataYd[sport.league] != null && self.sportsDataYd[sport.league].length > 0) {
-        // anyGames = true
-        if (self.config.showLeagueSeparators) {
-          leagueSeparator = document.createElement('div')
-          leagueSeparator.classList.add('league-separator')
-          if (sport.label) {
-            leagueSeparator.innerHTML = '<span>' + sport.label + ' - Yesterday</span>'
-          }
-          else {
-            leagueSeparator.innerHTML = '<span>' + sport.league + ' - Yesterday</span>'
-          }
-          wrapper.appendChild(leagueSeparator)
-        }
-        self.sportsDataYd[sport.league].forEach(function (game, gidx) {
-          var boxScore = self.boxScoreFactory(sport.league, game)
-          boxScore.classList.add(gidx % 2 == 0 ? 'odd' : 'even')
-          wrapper.appendChild(boxScore)
-        })
-      }
-    }) */
-    // this.config.sports.forEach(function (sport) {
-    // Log.debug(self.sportsData['NHL'])
-
-    self.sportsData = this.sortDict(self.sportsData)
-    for (const [sport, scores] of Object.entries(self.sportsData)) {
-      var leagueSeparator = []
-      if (scores['scores'].length > 0) {
-        // anyGames = true
-        if (self.config.showLeagueSeparators) {
-          leagueSeparator = document.createElement('div')
-          leagueSeparator.classList.add('league-separator')
-          leagueSeparator.innerHTML = '<span>' + sport + '</span>'
-          wrapper.appendChild(leagueSeparator)
-        }
-        scores['scores'].forEach(function (game, gidx) {
-          var boxScore = self.boxScoreFactory(scores['league'], game, sport)
-          boxScore.classList.add(gidx % 2 == 0 ? 'odd' : 'even')
-          wrapper.appendChild(boxScore)
-        })
-      }
-      if (self.sportsDataYd[sport] && self.sportsDataYd[sport]['scores'].length > 0) {
-        // anyGames = true
-        if (self.config.showLeagueSeparators) {
-          leagueSeparator = document.createElement('div')
-          leagueSeparator.classList.add('league-separator')
-          leagueSeparator.innerHTML = '<span>' + sport + ' - Yesterday</span>'
-          wrapper.appendChild(leagueSeparator)
-        }
-        self.sportsDataYd[sport]['scores'].forEach(function (game, gidx) {
-          var boxScore = self.boxScoreFactory(scores['league'], game, sport)
-          boxScore.classList.add(gidx % 2 == 0 ? 'odd' : 'even')
-          wrapper.appendChild(boxScore)
-        })
-      }
-    }
-
-    self.sportsDataYd = this.sortDict(self.sportsDataYd)
-    for (const [sport, scores] of Object.entries(self.sportsDataYd)) {
-      leagueSeparator = []
-      if (scores['scores'].length > 0 && !self.sportsData[sport]) {
-        // anyGames = true
-        if (self.config.showLeagueSeparators) {
-          leagueSeparator = document.createElement('div')
-          leagueSeparator.classList.add('league-separator')
-          leagueSeparator.innerHTML = '<span>' + sport + ' - Yesterday</span>'
-          wrapper.appendChild(leagueSeparator)
-        }
-        scores['scores'].forEach(function (game, gidx) {
-          var boxScore = self.boxScoreFactory(scores['league'], game, sport)
-          boxScore.classList.add(gidx % 2 == 0 ? 'odd' : 'even')
-          wrapper.appendChild(boxScore)
-        })
-      }
-    }
+      })
+    })
 
     /*
       We're using the lockString parameter to play nicely with
@@ -792,12 +743,6 @@ Module.register('MMM-MyScoreboard', {
       the module will only be visible when both agree that it
       should be visible.
     */
-    // Removed because it was throwing errors in the console
-    // if (!anyGames) {
-    //  this.hide(1000, {lockString: this.identifier});
-    // } else {
-    //  this.show(1000, {lockString: this.identifier});
-    // }
 
     if (self.config.maxHeight < 10000) {
       self.setupScrollAnimation(wrapper)
@@ -806,55 +751,67 @@ Module.register('MMM-MyScoreboard', {
     return wrapper
   },
 
-  // Function to Calculate the Total number of Divs for scoll and update interval.
+  // Function to Calculate the Total number of Divs for scroll and update interval.
   calculateTotalDivs: function () {
-    // separatorDivs can be used to slow animation down when active if desired.
     let gameDivs = 0
-    // let separatorDivs = 0;
-    // Log.debug(Object.keys(this.sportsData))
-    Object.keys(this.sportsData).forEach((sport) => {
-      gameDivs += this.sportsData[sport]['scores'].length
-      // if (this.config.showLeagueSeparators) separatorDivs++;
+    
+    // Count all games from multi-day structure
+    Object.keys(this.sportsDataMultiDay).forEach((sport) => {
+      Object.keys(this.sportsDataMultiDay[sport]).forEach((dayKey) => {
+        gameDivs += this.sportsDataMultiDay[sport][dayKey]['scores'].length
+      })
     })
-    Object.keys(this.sportsDataYd).forEach((sport) => {
-      gameDivs += this.sportsDataYd[sport]['scores'].length
-      // if (this.config.showLeagueSeparators) separatorDivs++;
-    })
-    // return (gameDivs + separatorDivs);
+    
     return gameDivs
   },
 
   socketNotificationReceived: function (notification, payload) {
-    if (notification === 'MMM-MYSCOREBOARD-SCORE-UPDATE' && payload.instanceId == this.identifier) {
-      // Log.info('[MMM-MyScoreboard] Updating Scores')
+    Log.debug(`[MMM-MyScoreboard] 📨 Frontend received notification: ${notification}`)
+    
+    if (notification === 'MMM-MYSCOREBOARD-SCORE-UPDATE-MULTIDAY' && payload.instanceId == this.identifier) {
+      Log.debug(`[MMM-MyScoreboard] 🎯 Processing MMM-MYSCOREBOARD-SCORE-UPDATE-MULTIDAY:`)
+      Log.debug(`[MMM-MyScoreboard]    - instanceId: ${payload.instanceId} (mine: ${this.identifier})`)
+      Log.debug(`[MMM-MyScoreboard]    - league: ${payload.league}`)
+      Log.debug(`[MMM-MyScoreboard]    - label: ${payload.label}`)
+      Log.debug(`[MMM-MyScoreboard]    - provider: ${payload.provider}`)
+      Log.debug(`[MMM-MyScoreboard]    - sortIdx: ${payload.sortIdx}`)
+      Log.debug(`[MMM-MyScoreboard]    - gamesByDate keys: [${Object.keys(payload.gamesByDate || {}).join(', ')}]`)
+      
+      // Process the new single-notification format with gamesByDate
       this.loaded = true
-      this.sportsData[payload.label] = {}
-      this.sportsData[payload.label]['scores'] = payload.scores
-      this.sportsData[payload.label]['league'] = payload.index
-      this.sportsData[payload.label]['sortIdx'] = payload.sortIdx
-      this.updateDom()
-      if (payload.noGamesToday === true) {
-        this.noGamesToday[payload.index] = this.getCurrentMoment().format('YYYY-MM-DD')
+      
+      if (!payload.gamesByDate) {
+        Log.error(`[MMM-MyScoreboard] ❌ No gamesByDate in payload!`)
+        return
       }
-      if (this.getCurrentMoment().hour() >= this.config.rolloverHours) {
-        this.sportsDataYd = {}
+      
+      if (!this.sportsDataMultiDay[payload.label]) {
+        this.sportsDataMultiDay[payload.label] = {}
+        Log.debug(`[MMM-MyScoreboard] 🆕 Created new entry for ${payload.label}`)
       }
-    }
-    else if (notification === 'MMM-MYSCOREBOARD-SCORE-UPDATE-YD' && payload.instanceId == this.identifier) {
-      // Log.info('[MMM-MyScoreboard] Updating Yesterday\'s Scores')
-      this.loaded = true
-      this.sportsDataYd[payload.label] = {}
-      this.sportsDataYd[payload.label]['scores'] = payload.scores
-      this.sportsDataYd[payload.label]['league'] = payload.index
-      this.sportsDataYd[payload.label]['sortIdx'] = payload.sortIdx
-      this.updateDom()
-      var stopGrabbingYD = true
-      for (let i = 0; i < payload.scores.length; i++) {
-        if (payload.scores[i].gameMode < 2) {
-          stopGrabbingYD = false
+      
+      // Process each date in the payload
+      Object.entries(payload.gamesByDate).forEach(([dateKey, dateData]) => {
+        Log.debug(`[MMM-MyScoreboard] � Processing date: ${dateKey}`)
+        Log.debug(`[MMM-MyScoreboard]    - scores: ${dateData.scores.length} games`)
+        Log.debug(`[MMM-MyScoreboard]    - dayLabel: ${dateData.dayLabel}`)
+        Log.debug(`[MMM-MyScoreboard]    - sortIdx: ${dateData.sortIdx}`)
+        
+        // Store in the multi-day structure
+        this.sportsDataMultiDay[payload.label][dateKey] = {
+          scores: dateData.scores,
+          league: payload.league,
+          sortIdx: dateData.sortIdx
         }
-      }
-      this.ydLoaded[payload.index] = { loaded: stopGrabbingYD, date: this.getCurrentMoment().format('YYYY-MM-DD') }
+        
+        Log.debug(`[MMM-MyScoreboard] 📅 Stored data for ${dateKey}`)
+      })
+      
+      Log.debug(`[MMM-MyScoreboard] 📊 Updated sportsDataMultiDay for ${payload.label}:`, Object.keys(this.sportsDataMultiDay[payload.label]))
+      
+      Log.debug(`[MMM-MyScoreboard] 🔄 Calling updateDom()...`)
+      this.updateDom()
+      Log.debug(`[MMM-MyScoreboard] ✅ updateDom() called`)
     }
     else if (notification === 'MMM-MYSCOREBOARD-LOCAL-LOGO-LIST' && payload.instanceId == this.identifier) {
       this.localLogos = payload.logos
@@ -914,8 +871,8 @@ Module.register('MMM-MyScoreboard', {
     */
 
     this.loaded = false
-    this.sportsData = {}
-    this.sportsDataYd = {}
+    // Multi-day structure replaces old sportsData/sportsDataYd: {sport: {dayKey: {scores, league, sortIdx}}}
+    this.sportsDataMultiDay = {}
 
     if (this.viewStyles.indexOf(this.config.viewStyle) == -1) {
       this.config.viewStyle = 'largeLogos'
@@ -934,7 +891,6 @@ Module.register('MMM-MyScoreboard', {
     this.rotateChannels()
 
     // Schedule the UI load based on normal interval
-    // var self = this
     setInterval(function () {
       self.rotateChannels()
     }, this.config.channelRotateInterval)
@@ -965,24 +921,15 @@ Module.register('MMM-MyScoreboard', {
   },
 
   getScores: function () {
+    Log.debug(`[MMM-MyScoreboard] 🚀 getScores() called`)
     var gameDate = this.getCurrentMoment() // get today's date
-    var whichDay = { today: false, yesterday: 'no' }
-
-    if (gameDate.hour() < this.config.rolloverHours) {
-      var tempYesterday = 'yes'
-    }
-
-    if (gameDate.hour() >= this.config.rolloverHours) {
-      var tempToday = true
-      // tempYesterday = 'erase'
-    }
-    else if (this.config.alwaysShowToday) {
-      tempToday = true
-    }
 
     // Legacy debug option - DEBUG_gameDate overrides useFakeDate if both are set
     if (this.config.DEBUG_gameDate) {
       gameDate = moment(this.config.DEBUG_gameDate, 'YYYYMMDD')
+      Log.debug(`[MMM-MyScoreboard] 🧪 Using DEBUG_gameDate: ${gameDate.format('YYYY-MM-DD')}`)
+    } else {
+      Log.debug(`[MMM-MyScoreboard] 📅 Using current date: ${gameDate.format('YYYY-MM-DD')}`)
     }
 
     var self = this
@@ -990,35 +937,30 @@ Module.register('MMM-MyScoreboard', {
       Log.debug(`[MMM-MyScoreboard] ${gameDate}`)
     }
     self.loadTime.start = Date.now()
+    
+    Log.debug(`[MMM-MyScoreboard] 🏟️ Processing ${this.config.sports.length} sports...`)
+    
     this.config.sports.forEach(function (sport, index) {
-      if (self.noGamesToday[sport.league] === gameDate.format('YYYY-MM-DD')) {
-        whichDay.today = false
-      }
-      else {
-        whichDay.today = tempToday
-      }
-
-      if (self.ydLoaded[sport.league] && self.ydLoaded[sport.league]['loaded'] && self.ydLoaded[sport.league]['date'] === gameDate.format('YYYY-MM-DD')) {
-        whichDay.yesterday = false
-      }
-      else {
-        whichDay.yesterday = tempYesterday
-      }
       if (sport.label) {
         var thisLabel = sport.label
       }
       else {
         thisLabel = sport.league
       }
+      
+      Log.debug(`[MMM-MyScoreboard] 📊 Processing sport ${index}: ${thisLabel} (${sport.league})`)
+      
+      var teams = self.makeTeamList(self, sport.league, sport.teams, sport.groups)
+      Log.debug(`[MMM-MyScoreboard]    - Teams: [${teams.join(', ')}]`)
+      
       var payload = {
         instanceId: self.identifier,
         index: index,
         league: sport.league,
-        teams: self.makeTeamList(self, sport.league, sport.teams, sport.groups),
+        teams: teams,
         provider: self.supportedLeagues[sport.league].provider,
         label: thisLabel,
         gameDate: gameDate,
-        whichDay: whichDay,
         hideBroadcasts: self.config.hideBroadcasts,
         skipChannels: self.config.skipChannels,
         showLocalBroadcasts: self.config.showLocalBroadcasts,
@@ -1029,10 +971,19 @@ Module.register('MMM-MyScoreboard', {
         useFakeDate: self.config.useFakeDate,
         from: sport.from, // Season start date (MM-DD)
         to: sport.to,     // Season end date (MM-DD)
+        minimumNumberOfGames: sport.minimumNumberOfGames || self.config.minimumNumberOfGames || 0
       }
 
+      Log.debug(`[MMM-MyScoreboard] 📤 Sending MMM-MYSCOREBOARD-GET-SCORES for ${thisLabel}:`)
+      Log.debug(`[MMM-MyScoreboard]    - instanceId: ${payload.instanceId}`)
+      Log.debug(`[MMM-MyScoreboard]    - provider: ${payload.provider}`)
+      Log.debug(`[MMM-MyScoreboard]    - minimumNumberOfGames: ${payload.minimumNumberOfGames}`)
+      Log.debug(`[MMM-MyScoreboard]    - season: ${payload.from || 'none'} to ${payload.to || 'none'}`)
+      
       self.sendSocketNotification('MMM-MYSCOREBOARD-GET-SCORES', payload)
     })
+    
+    Log.debug(`[MMM-MyScoreboard] ✅ All sport requests sent`)
   },
 
   rotateChannels: function () {

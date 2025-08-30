@@ -603,23 +603,23 @@ module.exports = {
       Log.debug(`[MMM-MyScoreboard] ${url} fetched`)
       var body = await response.json()
 
-      if (this.freeGameOfTheDay['day'] !== moment(gameDate).format('YYYY-MM-DD') && payload.league === 'MLB' && !payload.hideBroadcasts) {
-        const freeGameResponse = await fetch(MLBurl)
-        Log.debug(`[MMM-MyScoreboard] ${MLBurl} fetched`)
-        const freeGameBody = await freeGameResponse.json()
-        if (freeGameBody['results']) {
-          freeGameBody['results'].forEach ((game) => {
-            if (game['videoFeeds'].length > 0 && game['videoFeeds'][0]['freeGame']) {
-              this.freeGameOfTheDay['day'] = this.getCurrentMoment(payload).format('YYYY-MM-DD')
-              this.freeGameOfTheDay['teams'].push(game['gameData']['away']['teamAbbrv'])
-              this.freeGameOfTheDay['teams'].push(game['gameData']['home']['teamAbbrv'])
-              if (this.freeGameOfTheDay['teams'].includes('AZ')) {
-                this.freeGameOfTheDay['teams'].push('ARI')
-              }
-            }
-          })
-        }
-      }
+      // if (this.freeGameOfTheDay['day'] !== moment(gameDate).format('YYYY-MM-DD') && payload.league === 'MLB' && !payload.hideBroadcasts) {
+      //   const freeGameResponse = await fetch(MLBurl)
+      //   Log.debug(`[MMM-MyScoreboard] ${MLBurl} fetched`)
+      //   const freeGameBody = await freeGameResponse.json()
+      //   if (freeGameBody['results']) {
+      //     freeGameBody['results'].forEach ((game) => {
+      //       if (game['videoFeeds'].length > 0 && game['videoFeeds'][0]['freeGame']) {
+      //         this.freeGameOfTheDay['day'] = this.getCurrentMoment(payload).format('YYYY-MM-DD')
+      //         this.freeGameOfTheDay['teams'].push(game['gameData']['away']['teamAbbrv'])
+      //         this.freeGameOfTheDay['teams'].push(game['gameData']['home']['teamAbbrv'])
+      //         if (this.freeGameOfTheDay['teams'].includes('AZ')) {
+      //           this.freeGameOfTheDay['teams'].push('ARI')
+      //         }
+      //       }
+      //     })
+      //   }
+      // }
 
       if (this.getLeaguePath(payload.league).includes('scorepanel')) {
         var body2 = { events: [] }
