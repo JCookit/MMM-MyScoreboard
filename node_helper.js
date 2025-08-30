@@ -64,23 +64,29 @@ module.exports = NodeHelper.create({
     return `${league}-${dateStr}`
   },
 
+  // Check if a game involves any of the user's configured teams
+  isUserTeamGame: function(game, configuredTeams) {
+    if (!game || !configuredTeams || !configuredTeams.length) {
+      return false
+    }
+    
+    return configuredTeams.some(team => {
+      // Handle different provider data structures
+      // ESPN uses hTeam/vTeam, other providers might use homeTeam/awayTeam
+      const homeTeamAbbrev = game.hTeam || (game.homeTeam && game.homeTeam.abbreviation) || game.homeTeam
+      const awayTeamAbbrev = game.vTeam || (game.awayTeam && game.awayTeam.abbreviation) || game.awayTeam
+      
+      return (homeTeamAbbrev === team) || (awayTeamAbbrev === team)
+    })
+  },
+
   // Filter games to only include user's configured teams
   filterGamesForTeams: function(games, configuredTeams) {
     if (!games || !games.length || !configuredTeams || !configuredTeams.length) {
       return []
     }
     
-    return games.filter(game => {
-      // Check if any of the user's teams are playing in this game
-      return configuredTeams.some(team => {
-        // Handle different provider data structures
-        // ESPN uses hTeam/vTeam, other providers might use homeTeam/awayTeam
-        const homeTeamAbbrev = game.hTeam || (game.homeTeam && game.homeTeam.abbreviation) || game.homeTeam
-        const awayTeamAbbrev = game.vTeam || (game.awayTeam && game.awayTeam.abbreviation) || game.awayTeam
-        
-        return (homeTeamAbbrev === team) || (awayTeamAbbrev === team)
-      })
-    })
+    return games.filter(game => this.isUserTeamGame(game, configuredTeams))
   },
 
   // Helper function to fetch and process a single day
@@ -213,6 +219,88 @@ module.exports = NodeHelper.create({
       }
     }
     
+    // Fallback: If we still don't have enough games, use any cached games sorted by distance from today
+    if (totalUserGames < minimumGames) {
+      Log.debug(`[MMM-MyScoreboard] 🔄 Still need ${minimumGames - totalUserGames} more games, using fallback logic...`)
+      
+      // Collect all cached games with their distance from today
+      let allAvailableGames = []
+      const league = payload.league
+      
+      // Include today's games (they should be in cache from fetchSingleDay above)
+      const todayCacheKey = this.getCacheKey(league, baseDate)
+      if (this.gamesCache[todayCacheKey]) {
+        const todayGames = this.gamesCache[todayCacheKey].map(game => ({
+          ...game,
+          distanceFromToday: 0,
+          dateKey: baseDate.format('YYYY-MM-DD')
+        }))
+        allAvailableGames.push(...todayGames)
+      }
+
+      // Add cached games from other days
+      Object.keys(this.gamesCache).forEach(cacheKey => {
+        if (cacheKey.startsWith(league + '-')) {
+          const dateStr = cacheKey.replace(league + '-', '')
+          const gameDate = moment(dateStr)
+          const distance = Math.abs(gameDate.diff(baseDate, 'days'))
+
+          Log.debug(`adding ${cacheKey}`);
+          
+          if (distance > 0) { // Don't re-add today
+            const gamesWithDistance = this.gamesCache[cacheKey].map(game => ({
+              ...game,
+              distanceFromToday: distance,
+              dateKey: dateStr
+            }))
+            allAvailableGames.push(...gamesWithDistance)
+          }
+        }
+      })
+      
+      // Filter out games from user teams (we already have those)
+      // Use the extracted predicate for consistency
+      const nonUserGames = allAvailableGames.filter(game => {
+        return !this.isUserTeamGame(game, payload.teams)
+      })
+      
+      // Sort by distance from today, then by game importance (you could add more criteria)
+      nonUserGames.sort((a, b) => {
+        if (a.distanceFromToday !== b.distanceFromToday) {
+          return a.distanceFromToday - b.distanceFromToday
+        }
+        // Secondary sort could be by game status, rankings, etc.
+        return 0
+      })
+      
+      // Take the games we need
+      const gamesNeeded = minimumGames - totalUserGames
+      const fallbackGames = nonUserGames.slice(0, gamesNeeded)
+      
+      Log.debug(`[MMM-MyScoreboard] 📊 Fallback analysis: ${allAvailableGames.length} total cached games, ${nonUserGames.length} non-user games, taking ${fallbackGames.length}`)
+      
+      // Add these games to the appropriate day buckets
+      fallbackGames.forEach(game => {
+        const dateKey = game.dateKey
+        if (!gamesByDay[dateKey]) {
+          gamesByDay[dateKey] = {
+            actualDate: dateKey,
+            games: []
+          }
+        }
+        
+        // Remove the distance metadata before adding to results
+        const cleanGame = { ...game }
+        delete cleanGame.distanceFromToday
+        delete cleanGame.dateKey
+        
+        gamesByDay[dateKey].games.push(cleanGame)
+        totalUserGames++
+      })
+      
+      Log.debug(`[MMM-MyScoreboard] 🎯 Fallback complete: added ${fallbackGames.length} games, total now: ${totalUserGames}`)
+    }
+
     if (totalUserGames < minimumGames) {
       Log.debug(`[MMM-MyScoreboard] 🔚 Max search days reached. Final count: ${totalUserGames}`)
     } else {
@@ -247,7 +335,8 @@ module.exports = NodeHelper.create({
     // Fetch from provider
     const provider = this.providers[payload.provider]
     Log.debug(`[MMM-MyScoreboard] 🌐 Calling provider ${payload.provider} for ${league} on ${dateStr}`)
-    const dayPayload = {...payload, gameDate: targetDate}
+    let dayPayload = {...payload, gameDate: targetDate}
+    dayPayload.teams = null;   // don't have the provider filter on teams
     
     //Log.debug(`[MMM-MyScoreboard] 📤 Provider payload:`, JSON.stringify(dayPayload, null, 2))
     
@@ -262,13 +351,13 @@ module.exports = NodeHelper.create({
         //   Log.debug(`[MMM-MyScoreboard] 📋 First game sample:`, JSON.stringify(scores[0], null, 2))
         // }
         
-        // Store in cache only for non-today dates
+        // Store in cache - always cache, but don't READ from cache for today (games change frequently)
         const games = scores || []
-        if (!isToday) {
-          self.gamesCache[cacheKey] = games
-          Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} games for ${league} on ${dateStr}`)
+        self.gamesCache[cacheKey] = games
+        if (isToday) {
+          Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} TODAY'S games for ${league} (needed for fallback logic)`)
         } else {
-          Log.debug(`[MMM-MyScoreboard] ⚡ Not caching today's games - fetched ${games.length} games for ${league}`)
+          Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} games for ${league} on ${dateStr}`)
         }
         
         // Filter for user's teams
