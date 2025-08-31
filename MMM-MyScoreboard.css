@@ -21,6 +21,11 @@
   padding-bottom: 12px; /* Extra space for playoff status */
 }
 
+/* Add spacing between games on the same day */
+.MMM-MyScoreboard .box-score.stackedWithLogos + .box-score.stackedWithLogos {
+  padding-top: 0.5em; /* Space between consecutive games */
+}
+
 /* Game table - flexible layout for logos, teams, and scores */
 .MMM-MyScoreboard .game-table {
   width: 100%;
