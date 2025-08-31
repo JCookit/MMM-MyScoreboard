@@ -51,7 +51,7 @@ module.exports = NodeHelper.create({
   checkAndClearCache: function(useFakeDate) {
     const currentDate = this.getCurrentMoment(useFakeDate).format('YYYY-MM-DD')
     if (this.cacheDate !== currentDate) {
-      Log.debug(`[MMM-MyScoreboard] Clearing games cache - date changed from ${this.cacheDate} to ${currentDate}`)
+      Log.info(`[MMM-MyScoreboard] Cache cleared - date changed to ${currentDate}`)
       this.gamesCache = {}
       this.cacheDate = currentDate
     }
@@ -95,22 +95,19 @@ module.exports = NodeHelper.create({
     
     // Check if this day is in season
     if (!this.isInSeason({...payload, from: payload.from, to: payload.to}, payload.useFakeDate, targetDate)) {
-      Log.debug(`[MMM-MyScoreboard] ⏭️ Skipping ${dateKey} - out of season`)
       return null
     }
     
-    Log.debug(`[MMM-MyScoreboard] 📅 Fetching ${dateKey} (offset: ${dayOffset})`)
     const { userGames } = await this.fetchAndProcessDay(payload, targetDate, dayOffset)
     
     if (userGames && userGames.length > 0) {
-      Log.debug(`[MMM-MyScoreboard] 📈 Found ${userGames.length} games for ${dateKey}`)
+      Log.info(`[MMM-MyScoreboard] Found ${userGames.length} games for ${dateKey}`)
       return {
         dateKey,
         games: userGames
       }
     }
     
-    Log.debug(`[MMM-MyScoreboard] ❌ No games found for ${dateKey}`)
     return null
   },
 
@@ -123,7 +120,6 @@ module.exports = NodeHelper.create({
     const dateKey = targetDate.format('YYYY-MM-DD')
     
     if (processedDays.has(dateKey)) {
-      Log.debug(`[MMM-MyScoreboard] ⏭️ Skipping ${dateKey} (already processed)`)
       return null
     }
     
@@ -131,7 +127,6 @@ module.exports = NodeHelper.create({
     processedDays.add(dateKey)
     
     if (result) {
-      Log.debug(`[MMM-MyScoreboard] 📈 Added ${result.games.length} games for ${dateKey}`)
       return result
     }
     
@@ -146,19 +141,14 @@ module.exports = NodeHelper.create({
     const teams = payload.teams
     const minimumGames = payload.minimumNumberOfGames || 0
     
-    Log.debug(`[MMM-MyScoreboard] 🚀 gatherMinimumGames START:`)
-    Log.debug(`[MMM-MyScoreboard]    - League: ${league}`)
-    Log.debug(`[MMM-MyScoreboard]    - Base Date: ${baseDate.format('YYYY-MM-DD')}`)
-    Log.debug(`[MMM-MyScoreboard]    - Teams: [${teams.join(', ')}]`)
-    Log.debug(`[MMM-MyScoreboard]    - Minimum Games: ${minimumGames}`)
-    Log.debug(`[MMM-MyScoreboard]    - Provider: ${payload.provider}`)
+    Log.info(`[MMM-MyScoreboard] Looking for ${minimumGames} minimum games for ${league}`)
     
     // Initialize results
     let gamesByDay = {}
     let totalUserGames = 0
     let processedDays = new Set()
     
-    Log.debug(`[MMM-MyScoreboard] Looking for minimum ${minimumGames} games for ${league}`)
+    Log.info(`[MMM-MyScoreboard] Looking for minimum ${minimumGames} games for ${league}`)
     
     // Process today first
     const todayResult = await this.fetchSingleDay(payload, baseDate, 0)
@@ -171,23 +161,18 @@ module.exports = NodeHelper.create({
         games: todayResult.games
       }
       totalUserGames += todayResult.games.length
-      Log.debug(`[MMM-MyScoreboard] 📈 After TODAY: ${totalUserGames} total games`)
     }
     
     // Check if we have enough or if minimum is 0 (original behavior)
-    Log.debug(`[MMM-MyScoreboard] 🔢 Current count: ${totalUserGames}, minimum needed: ${minimumGames}`)
-    
     if (minimumGames === 0 || totalUserGames >= minimumGames) {
-      Log.debug(`[MMM-MyScoreboard] ✅ Sufficient games found, returning results...`)
-      Log.debug(`[MMM-MyScoreboard] 📤 Final results keys: [${Object.keys(gamesByDay).join(', ')}]`)
+      Log.info(`[MMM-MyScoreboard] Found ${totalUserGames} games (${minimumGames} minimum required)`)
       return gamesByDay
     }
     
     // Continue searching past and future days iteratively
-    Log.debug(`[MMM-MyScoreboard] 🔄 Need more games, searching additional days...`)
+    Log.info(`[MMM-MyScoreboard] Need ${minimumGames - totalUserGames} more games, searching additional days...`)
     
     for (let dayOffset = 1; dayOffset <= this.MAX_DAYS_TO_SEARCH && totalUserGames < minimumGames; dayOffset++) {
-      Log.debug(`[MMM-MyScoreboard] 🔄 Day search iteration: offset ${dayOffset}, current total: ${totalUserGames}`)
       
       // Try past first
       const pastResult = await this.tryDirection(payload, baseDate, dayOffset, 'past', processedDays)
@@ -197,10 +182,8 @@ module.exports = NodeHelper.create({
           games: pastResult.games
         }
         totalUserGames += pastResult.games.length
-        Log.debug(`[MMM-MyScoreboard] 📈 Past day added, total: ${totalUserGames}`)
         
         if (totalUserGames >= minimumGames) {
-          Log.debug(`[MMM-MyScoreboard] ✅ Minimum reached after past day`)
           break
         }
       }
@@ -214,14 +197,13 @@ module.exports = NodeHelper.create({
             games: futureResult.games
           }
           totalUserGames += futureResult.games.length
-          Log.debug(`[MMM-MyScoreboard] 📈 Future day added, total: ${totalUserGames}`)
         }
       }
     }
     
     // Fallback: If we still don't have enough games, use any cached games sorted by distance from today
     if (totalUserGames < minimumGames) {
-      Log.debug(`[MMM-MyScoreboard] 🔄 Still need ${minimumGames - totalUserGames} more games, using fallback logic...`)
+      Log.info(`[MMM-MyScoreboard] Using fallback: need ${minimumGames - totalUserGames} more games from cache...`)
       
       // Collect all cached games with their distance from today
       let allAvailableGames = []
@@ -248,8 +230,6 @@ module.exports = NodeHelper.create({
           const dateStr = cacheKey.replace(league + '-', '')
           const gameDate = moment(dateStr)
           const distance = Math.abs(gameDate.diff(baseDate, 'days'))
-
-          Log.debug(`adding ${cacheKey}`);
           
           if (distance > 0) {
             this.gamesCache[cacheKey].forEach(game => {
@@ -279,8 +259,6 @@ module.exports = NodeHelper.create({
       const gamesNeeded = minimumGames - totalUserGames
       const fallbackGames = allAvailableGames.slice(0, gamesNeeded)
       
-      Log.debug(`[MMM-MyScoreboard] 📊 Fallback analysis: ${allAvailableGames.length} total cached non-user games, taking ${fallbackGames.length}`)
-      
       // Add these games to the appropriate day buckets
       fallbackGames.forEach(game => {
         const dateKey = game.dateKey
@@ -299,17 +277,9 @@ module.exports = NodeHelper.create({
         gamesByDay[dateKey].games.push(cleanGame)
         totalUserGames++
       })
-      
-      Log.debug(`[MMM-MyScoreboard] 🎯 Fallback complete: added ${fallbackGames.length} games, total now: ${totalUserGames}`)
     }
 
-    if (totalUserGames < minimumGames) {
-      Log.debug(`[MMM-MyScoreboard] 🔚 Max search days reached. Final count: ${totalUserGames}`)
-    } else {
-      Log.debug(`[MMM-MyScoreboard] ✅ Minimum games achieved: ${totalUserGames}`)
-    }
-    
-    Log.debug(`[MMM-MyScoreboard] 🏁 Final search results keys: [${Object.keys(gamesByDay).join(', ')}]`)
+    Log.info(`[MMM-MyScoreboard] Final result: ${totalUserGames} games found across ${Object.keys(gamesByDay).length} days`)
     return gamesByDay
   },
   
@@ -321,33 +291,21 @@ module.exports = NodeHelper.create({
     const cacheKey = this.getCacheKey(league, targetDate)
     const dateStr = (typeof targetDate === 'string') ? targetDate : targetDate.format('YYYY-MM-DD')
     
-    Log.debug(`[MMM-MyScoreboard] 🔍 fetchAndProcessDay: ${league} on ${dateStr} (dayOffset: ${dayOffset}, teams: [${teams.join(', ')}])`)
-    
     // Only use cache for non-today dates (today's games change frequently)
     const isToday = dayOffset === 0
     if (!isToday && this.gamesCache[cacheKey]) {
-      Log.debug(`[MMM-MyScoreboard] ✅ Using cached games for ${league} on ${dateStr}`)
       const cachedGames = this.gamesCache[cacheKey]
-      Log.debug(`[MMM-MyScoreboard] 📊 Cached data: ${cachedGames.length} total games`)
       const userGames = this.filterGamesForTeams(cachedGames, teams)
-      Log.debug(`[MMM-MyScoreboard] 🎯 Filtered to ${userGames.length} user games`)
       return { userGames, allGames: cachedGames }
     }
     
     // Fetch from provider
     const provider = this.providers[payload.provider]
-    Log.debug(`[MMM-MyScoreboard] 🌐 Calling provider ${payload.provider} for ${league} on ${dateStr}`)
     let dayPayload = {...payload, gameDate: targetDate}
     dayPayload.teams = null;   // don't have the provider filter on teams
     
-    //Log.debug(`[MMM-MyScoreboard] 📤 Provider payload:`, JSON.stringify(dayPayload, null, 2))
-    
     return new Promise((resolve, reject) => {
       provider.getScores(dayPayload, targetDate, function(scores, sortIdx, noGamesToday) {
-        Log.debug(`[MMM-MyScoreboard] 📥 Provider response for ${league} on ${dateStr}:`)
-        Log.debug(`[MMM-MyScoreboard]    - scores: ${scores ? scores.length : 'null/undefined'} games`)
-        Log.debug(`[MMM-MyScoreboard]    - sortIdx: ${sortIdx}`)
-        Log.debug(`[MMM-MyScoreboard]    - noGamesToday: ${noGamesToday}`)
         
         // if (scores && scores.length > 0) {
         //   Log.debug(`[MMM-MyScoreboard] 📋 First game sample:`, JSON.stringify(scores[0], null, 2))
@@ -356,15 +314,9 @@ module.exports = NodeHelper.create({
         // Store in cache - always cache, but don't READ from cache for today (games change frequently)
         const games = scores || []
         self.gamesCache[cacheKey] = games
-        if (isToday) {
-          Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} TODAY'S games for ${league} (needed for fallback logic)`)
-        } else {
-          Log.debug(`[MMM-MyScoreboard] 💾 Cached ${games.length} games for ${league} on ${dateStr}`)
-        }
         
         // Filter for user's teams
         const userGames = self.filterGamesForTeams(games, teams)
-        Log.debug(`[MMM-MyScoreboard] 🎯 Filtered to ${userGames.length} user games for teams [${teams.join(', ')}]`)
         
         // if (userGames.length > 0) {
         //   Log.debug(`[MMM-MyScoreboard] 🎮 User games sample:`, JSON.stringify(userGames[0], null, 2))
@@ -460,7 +412,6 @@ module.exports = NodeHelper.create({
       
       try {
         const results = await this.gatherMinimumGames(payload)
-        Log.debug(`[MMM-MyScoreboard] 📊 Backend gathered results with keys: [${Object.keys(results).join(', ')}]`)
         
         // Convert results to frontend format (results already have actual date keys)
         const dateKeyedResults = {}
@@ -470,8 +421,6 @@ module.exports = NodeHelper.create({
             scores: dayData.games || [],
             sortIdx: dayData.sortIdx || 999
           }
-          
-          Log.debug(`[MMM-MyScoreboard] 🗓️ Prepared ${dateKey} with ${(dayData.games || []).length} games`)
         })
         
         // Send SINGLE notification with all days
@@ -484,7 +433,7 @@ module.exports = NodeHelper.create({
           gamesByDate: dateKeyedResults
         }
         
-        Log.debug(`[MMM-MyScoreboard] 🚀 SENDING single MMM-MYSCOREBOARD-SCORE-UPDATE-MULTIDAY with dates: [${Object.keys(dateKeyedResults).join(', ')}]`)
+        Log.info(`[MMM-MyScoreboard] Sending score update for ${Object.keys(dateKeyedResults).length} days`)
         
         self.sendSocketNotification('MMM-MYSCOREBOARD-SCORE-UPDATE-MULTIDAY', notification)
       } catch (error) {
