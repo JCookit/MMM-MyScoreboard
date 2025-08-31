@@ -69,6 +69,7 @@
 .MMM-MyScoreboard .team-name-cell {
   width: 140px; /* Fixed width to align all scores consistently */
   padding-right: 1px; /* Much closer - about a third of previous distance */
+  font-weight: bold;
 }
 
 .MMM-MyScoreboard .team-name {
@@ -98,7 +99,7 @@
   font-size: 1.0em; /* Reduced from 20px */
   line-height: 0.9em; /* Reduced from 24px */
   color: #FFF;
-  font-weight: bold;
+  /* font-weight: bold; */
   text-align: left; /* Left align the score text */
 }
 
@@ -185,6 +186,7 @@
 
 .MMM-MyScoreboard .league-separator .league-date {
   color: var(--color-text-bright); /* Date portion keeps default color */
+  font-weight: normal;
 }
 
 /* Multi-day game styling */
