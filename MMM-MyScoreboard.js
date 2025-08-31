@@ -319,12 +319,13 @@ Module.register('MMM-MyScoreboard', {
     const baseMoment = baseDate || this.getCurrentMoment()
     const dayMoment = moment(dateKey, 'YYYY-MM-DD')
     const dayDiff = dayMoment.diff(baseMoment.startOf('day'), 'days')
+    const actualDate = dayMoment.format('ddd MMM D') // Format like "Mon Aug 25"
     
-    if (dayDiff === 0) return 'Today'
-    if (dayDiff === -1) return 'Yesterday'
-    if (dayDiff === 1) return 'Tomorrow'
-    if (dayDiff < 0) return `${Math.abs(dayDiff)} days ago`
-    return `in ${dayDiff} days`
+    if (dayDiff === 0) return `Today`
+    if (dayDiff === -1) return `Yesterday (${actualDate})`
+    if (dayDiff === 1) return `Tomorrow (${actualDate})`
+    if (dayDiff < 0) return `${Math.abs(dayDiff)} days ago (${actualDate})`
+    return `in ${dayDiff} days (${actualDate})`
   },
 
   // Helper to get all multi-day data sorted by day offset

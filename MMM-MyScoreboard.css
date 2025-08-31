@@ -281,8 +281,8 @@
 /* Team names - table layout */
 .MMM-MyScoreboard .box-score .team-name {
   display: block;
-  font-size: 20px;
-  line-height: 24px;
+  font-size: 1.0em;
+  line-height: 1.0em;
   margin: 0;
   padding: 0;
   white-space: nowrap;
@@ -306,7 +306,7 @@
   justify-content: flex-start;
   align-content: flex-start;
   align-items: flex-end;
-  line-height: 1;
+  line-height: 1.0em;
   font-weight: 300;
   font-size: 20px;
 }
@@ -546,7 +546,7 @@
   text-overflow: ellipsis;
   max-width: 100%;
   font-size: 13px !important; /* Slightly smaller font, override xsmall */
-  line-height: 1.2;
+  line-height: 1.0;
   opacity: 0.8 !important; /* Override dimmed class for better visibility */
 }
 
