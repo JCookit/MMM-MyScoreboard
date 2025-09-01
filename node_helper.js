@@ -210,7 +210,6 @@ module.exports = NodeHelper.create({
       
       // Collect all cached games with their distance from today
       let allAvailableGames = []
-      const league = payload.league
       
       // Include today's games (they should be in cache from fetchSingleDay above)
       const todayCacheKey = this.getCacheKey(league, baseDate)

@@ -800,10 +800,8 @@ Module.register('MMM-MyScoreboard', {
       }
       
       // Use league KEY for data storage, not label
-      if (!this.sportsDataMultiDay[payload.league]) {
-        this.sportsDataMultiDay[payload.league] = {}
-        Log.debug(`[MMM-MyScoreboard] 🆕 Created new entry for ${payload.league}`)
-      }
+      this.sportsDataMultiDay[payload.league] = {}
+      Log.debug(`[MMM-MyScoreboard] 🆕 Created new entry for ${payload.league}`)
       
       // Process each date in the payload
       Object.entries(payload.gamesByDate).forEach(([dateKey, dateData]) => {
