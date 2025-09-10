@@ -981,6 +981,27 @@ module.exports = {
       }
 
       if (payload.league !== 'SOCCER_ON_TV' || (broadcast.length > 0)) {
+        // Extract team records if available
+        var hRecord = ''
+        var vRecord = ''
+        
+        // Check if home team has records
+        if (hTeamData.records && Array.isArray(hTeamData.records)) {
+          // different leagues seem to use either 'overall' or 'YTD' for full season record
+          var hOverallRecord = hTeamData.records.find(record => record.name === 'overall' || record.name === 'YTD')
+          if (hOverallRecord && hOverallRecord.summary) {
+            hRecord = hOverallRecord.summary
+          }
+        }
+        
+        // Check if visiting team has records
+        if (vTeamData.records && Array.isArray(vTeamData.records)) {
+          var vOverallRecord = vTeamData.records.find(record => record.name === 'overall' || record.name === 'YTD')
+          if (vOverallRecord && vOverallRecord.summary) {
+            vRecord = vOverallRecord.summary
+          }
+        }
+
         formattedGamesList.push({
           classes: classes,
           gameMode: gameState,
@@ -992,6 +1013,8 @@ module.exports = {
           vTeamRanking: (payload.league == 'NCAAF' || payload.league == 'NCAAM') ? this.formatT25Ranking(vTeamData.curatedRank.current) : null,
           hScore: parseInt(hTeamData.score),
           vScore: parseInt(vTeamData.score),
+          hRecord: hRecord,
+          vRecord: vRecord,
           status: status,
           broadcast: broadcast,
           hTeamLogoUrl: hTeamData.team.logo ? hTeamData.team.logo : '',

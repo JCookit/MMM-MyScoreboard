@@ -476,11 +476,13 @@ Module.register('MMM-MyScoreboard', {
       { key: firstTeam, name: firstTeam === 'home' ? gameObj.hTeamLong : gameObj.vTeamLong, 
         abbr: firstTeam === 'home' ? gameObj.hTeam : gameObj.vTeam,
         score: firstTeam === 'home' ? gameObj.hScore : gameObj.vScore,
-        ranking: firstTeam === 'home' ? gameObj.hTeamRanking : gameObj.vTeamRanking },
+        ranking: firstTeam === 'home' ? gameObj.hTeamRanking : gameObj.vTeamRanking,
+        record: firstTeam === 'home' ? gameObj.hRecord : gameObj.vRecord },
       { key: secondTeam, name: secondTeam === 'home' ? gameObj.hTeamLong : gameObj.vTeamLong,
         abbr: secondTeam === 'home' ? gameObj.hTeam : gameObj.vTeam, 
         score: secondTeam === 'home' ? gameObj.hScore : gameObj.vScore,
-        ranking: secondTeam === 'home' ? gameObj.hTeamRanking : gameObj.vTeamRanking }
+        ranking: secondTeam === 'home' ? gameObj.hTeamRanking : gameObj.vTeamRanking,
+        record: secondTeam === 'home' ? gameObj.hRecord : gameObj.vRecord }
     ]
     
     teams.forEach(function(team) {
@@ -516,7 +518,14 @@ Module.register('MMM-MyScoreboard', {
       nameCell.classList.add('team-name-cell')
       var teamName = document.createElement('span')
       teamName.classList.add('team-name', team.key)
-      teamName.innerHTML = (this.config.showRankings && team.ranking ? '<span class="ranking">' + team.ranking + '</span>' : '') + team.name
+      
+      // Build team name with ranking and record
+      var teamNameHTML = (this.config.showRankings && team.ranking ? '<span class="ranking">' + team.ranking + '</span>' : '') + team.name
+      if (team.record && team.record.trim() !== '') {
+        teamNameHTML += ' <span class="team-record">(' + team.record + ')</span>'
+      }
+      teamName.innerHTML = teamNameHTML
+      
       nameCell.appendChild(teamName)
       row.appendChild(nameCell)
       
