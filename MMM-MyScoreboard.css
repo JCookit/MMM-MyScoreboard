@@ -28,7 +28,7 @@
 
 .MMM-MyScoreboard .game-table .score-cell {
   width: auto; /* Let it size to content */
-  padding-left: 10px; /* Increased from 8px and made more specific */
+  padding-left: 20px; /* Increased from 8px and made more specific */
 }
 
 /* Game table - flexible layout for logos, teams, and scores */
